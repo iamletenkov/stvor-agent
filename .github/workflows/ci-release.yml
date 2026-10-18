@@ -8,7 +8,7 @@ name: CI and Release
 # PR «release X.Y.Z» (VERSION и CHANGELOG.md); слияние этого PR создаёт тег
 # vX.Y.Z и ОПУБЛИКОВАННЫЙ релиз, после чего job release-artifacts собирает из
 # тега .deb и SHA256SUMS и прикладывает их к релизу, а dispatch-extensions
-# запускает в bisquite-extensions подъём пина агента. Теги руками не ставят.
+# запускает в cream-extensions подъём пина агента. Теги руками не ставят.
 #
 # Повторно собрать и приложить файлы к уже опубликованному релизу — ручной
 # запуск с входом release_tag (Actions → CI and Release → Run workflow).
@@ -50,6 +50,13 @@ jobs:
         with:
           fetch-depth: 0   # SOURCE_DATE_EPOCH — время последнего коммита
           persist-credentials: false
+
+      # Секреты в дереве — тот же gitleaks и тот же .gitleaks.toml, что на
+      # pre-commit; образ закреплён по версии.
+      - name: Gitleaks
+        run: >-
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.30.1
+          dir /repo --config /repo/.gitleaks.toml --redact --no-banner -v
 
       - name: Install tools
         run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends shellcheck lintian
@@ -153,13 +160,13 @@ jobs:
           gh release upload "$TAG" dist/*.deb dist/SHA256SUMS \
             --repo "$GITHUB_REPOSITORY" --clobber
 
-  # Релиз сам поднимает пин агента в bisquite-extensions: запускает там
+  # Релиз сам поднимает пин агента в cream-extensions: запускает там
   # agent-bump.yml, который ставит версию и sha256 из SHA256SUMS релиза
   # в расширение teleport-agent и открывает PR. Поэтому job идёт только
   # после release-artifacts: до загрузки файлов суммы ещё нет.
   #
   # Токен — EXTENSIONS_DISPATCH_TOKEN: fine-grained PAT только на
-  # iamletenkov/bisquite-extensions с правом Actions: Read and write. Код он
+  # iamletenkov/cream-extensions с правом Actions: Read and write. Код он
   # пушить не может — ветку и PR там делает уже GITHUB_TOKEN того workflow.
   # GITHUB_TOKEN этого репозитория чужой workflow запустить не может.
   #
@@ -169,9 +176,9 @@ jobs:
   # нет), а если первый dispatch не дошёл, это и есть способ повторить.
   # На pull_request секретов нет, а pull_request_target здесь не нужен
   # и опасен. Без секрета (форк, чужой клон) шаг пропускается
-  # с предупреждением; в iamletenkov/bisquite-teleport-agent это отказ.
+  # с предупреждением; в iamletenkov/stvor-agent это отказ.
   dispatch-extensions:
-    name: Bump agent in bisquite-extensions
+    name: Bump agent in cream-extensions
     needs: [release-please, release-artifacts]
     if: >-
       github.ref == 'refs/heads/main' &&
@@ -184,8 +191,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.EXTENSIONS_DISPATCH_TOKEN }}
           TAG: ${{ needs.release-please.outputs.tag_name || inputs.release_tag }}
-          TARGET_REPO: iamletenkov/bisquite-extensions
-          HOME_REPO: iamletenkov/bisquite-teleport-agent
+          TARGET_REPO: iamletenkov/cream-extensions
+          HOME_REPO: iamletenkov/stvor-agent
         run: |
           set -euo pipefail
           if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then

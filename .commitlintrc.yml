@@ -1,0 +1,15 @@
+# Формат заголовка коммита. Не косметика: release-please вычисляет следующую
+# версию из типов коммитов (.github/release_please/). Кривой заголовок молча
+# выпадает из расчёта версии и CHANGELOG.md.
+#   feat → minor · fix → patch · feat! / BREAKING CHANGE → major
+# Текст заголовка и тела — по-русски, поэтому subject-case выключен.
+extends:
+  - "@commitlint/config-conventional"
+rules:
+  type-enum:
+    - 2
+    - always
+    - [feat, fix, perf, refactor, chore, docs, test, ci, build, style, revert]
+  subject-case: [0]
+  header-max-length: [2, always, 100]
+  body-max-line-length: [2, always, 100]

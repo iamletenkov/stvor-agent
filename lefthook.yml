@@ -1,0 +1,61 @@
+# lefthook: pre-commit — быстрые проверки staged-файлов; commit-msg — commitlint;
+# pre-push — make ci целиком. Установка: lefthook install. Обход (--no-verify) запрещён.
+# Нет тулзы на хосте — тот же инструмент в docker (образы закреплены).
+
+pre-commit:
+  parallel: true
+  commands:
+    shellcheck:
+      run: |
+        files=""
+        for f in {staged_files}; do
+          [ -f "$f" ] || continue
+          case "$f" in
+            *.sh|*.bash|*.bats) files="$files $f" ;;
+            *.*) ;;
+            *) head -n1 "$f" | grep -Eq '^#!.*(bash|/sh|dash)' && files="$files $f" ;;
+          esac
+        done
+        [ -z "$files" ] && exit 0
+        if command -v shellcheck >/dev/null 2>&1; then
+          shellcheck -x -S style $files
+        else
+          docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:stable -x -S style $files
+        fi
+
+    gitleaks:
+      run: |
+        if command -v gitleaks >/dev/null 2>&1; then
+          gitleaks protect --staged --redact -v
+        else
+          # В git worktree .git — файл-указатель наружу: общий каталог .git
+          # монтируется по своему пути, иначе gitleaks сканирует ноль байт.
+          common="$(git rev-parse --git-common-dir)"
+          case "$common" in /*) ;; *) common="$PWD/$common" ;; esac
+          out="$(docker run --rm -v "$PWD:/repo" -v "$common:$common" \
+                   zricethezav/gitleaks:v8.30.1 protect --source=/repo --staged --redact -v 2>&1)"
+          rc=$?
+          printf '%s\n' "$out"
+          staged="$(git diff --cached --numstat | grep -cv '^-')" || true
+          if [ "${staged:-0}" -gt 0 ] && printf '%s' "$out" | grep -qE 'scanned ~0 bytes'; then
+            echo "gitleaks: staged-файлы есть, а просканировано 0 байт — это отказ проверки" >&2
+            exit 1
+          fi
+          exit $rc
+        fi
+
+commit-msg:
+  commands:
+    commitlint:
+      run: |
+        if command -v commitlint >/dev/null 2>&1; then
+          commitlint --edit {1}
+        else
+          # Сообщение через stdin: в worktree COMMIT_EDITMSG лежит вне $PWD.
+          docker run --rm -i -v "$PWD:/repo" -w /repo commitlint/commitlint:21.2.2 < {1}
+        fi
+
+pre-push:
+  commands:
+    ci:
+      run: make ci

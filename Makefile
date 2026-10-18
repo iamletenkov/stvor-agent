@@ -1,4 +1,4 @@
-.PHONY: help check test lint deb
+.PHONY: help check test lint deb ci
 
 help:  ## список целей
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | sed 's/:.*## /\t/'
@@ -14,3 +14,5 @@ lint:  ## только shellcheck
 
 deb:  ## dist/bisquite-teleport-agent_<версия>_all.deb и dist/SHA256SUMS
 	tools/build-deb.sh
+
+ci: check deb  ## то же, что CI: shellcheck, тесты и сборка .deb

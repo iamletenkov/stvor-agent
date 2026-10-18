@@ -1,16 +1,10 @@
-# Правила для агентов и людей
+@AGENTS.md
 
-## Язык
-- Общение, документация, README, `.md` — **на русском**.
-- Код, комментарии в коде, имена переменных и файлов — **на английском**.
-- **Коммиты — Conventional Commits с текстом на русском.** Тип и область латиницей,
-  описание и тело — по-русски: `feat(rustdesk): пакет для arm64 со своей суммой`,
-  `fix(ci): подъём подмодуля коммитит без хуков раннера`. Commitlint язык не
-  проверяет — правило держится договорённостью.
-- **Заголовок и описание PR — тоже на русском**, заголовок в том же формате, что
-  коммит: при «Squash and merge» он становится заголовком коммита в `main`.
-- Лимиты commitlint: заголовок ≤ 100 символов, каждая строка тела ≤ 100.
-  release-please кладёт заголовки `feat`/`fix` в `CHANGELOG.md` с русскими
-  разделами («Добавлено», «Исправлено»), поэтому текст на русском.
-- Так же устроены `bisquite` и соседний репозиторий (`bisquite-extensions` /
-  `bisquite-teleport-agent`).
+## Claude Code
+- **Субагенты** (`.claude/agents/`, все — Opus 5.5, `model: opus`): `explorer` (чтение кода и решений) → `planner` (план) → `skeptic` (≤ 3 риска) → реализация → `reviewer` (вердикт перед PR); `test-runner` — прогон `make`-таргетов и диагноз падений. Большие чтения и длинные прогоны отдавай им — главный контекст дорогой.
+- **Skills** (`.claude/skills/`): `/plan`, `/skeptic`, `/fullcheck` (`make ci` с логом в `.scratchpad/test-runs/`), `/release` (как выходит версия). Плагины: `superpowers:*` (brainstorming → writing-plans → subagent-driven-development → verification-before-completion), `/code-review`, `/commit-commands:commit`.
+- **Правила** (`.claude/rules/`): `shell.md` (текущий bash), `go.md` (будущий Go), `docs.md` (где что лежит).
+- **Хуки** (`.claude/settings.json`) — enforcement: деструктивные команды и `--no-verify` блокируются; `Read` > 2 МБ без `limit` блокируется; после правки — shellcheck для shell и `gofmt` в контейнере для `.go`; на старте — git-контекст и `docs/STATUS.md`.
+- **MCP** (`.mcp.json` из `.mcp.json.example`, ключи из env): `codebase-memory` — навигация по коду в первую очередь (slug даёт SessionStart-хук); `knowledge-graph` — память между сессиями (решения, причины багов, поправки владельца; не тривиальное); `context7` — документация библиотек.
+- **Модель:** основная сессия — Opus 5.5 (`high`, рутина — `medium`); архитектура и спеки — `xhigh` в plan mode. Модель выбирается в начале сессии.
+- **Сессии:** `/clear` между несвязанными задачами; перед концом длинной сессии — обновить `docs/STATUS.md`. Параллельные исполнители — только в своих worktree с непересекающимися файлами.
