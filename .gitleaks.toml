@@ -3,15 +3,17 @@ title = "gitleaks config"
 [extend]
   useDefault = true
 
+# Плейсхолдеры пропускаются, только если плейсхолдером является сам найденный
+# секрет (regexTarget = "secret" — группа секрета правила, якоря ^…$), а не
+# любая строка, где он встречается рядом с настоящим ключом.
 [allowlist]
   description = "Шаблоны и плейсхолдеры"
   paths = [
-    '''\.mcp\.json\.example$''',
+    '''(^|/)\.mcp\.json\.example$''',
   ]
-  regexTarget = "line"
+  regexTarget = "secret"
   regexes = [
-    '''<[A-Z_]+>''',
-    '''\$\{[A-Z0-9_]+\}''',
-    '''REPLACE_ME''',
-    '''example\.(com|org)''',
+    '''^<[A-Z0-9_]+>$''',
+    '''^\$\{[A-Z0-9_]+\}$''',
+    '''^REPLACE_ME$''',
   ]

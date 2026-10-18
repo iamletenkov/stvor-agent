@@ -53,6 +53,37 @@ MSG
     fi
 done
 
+# Обход git-хуков и подмена конфигурации git: `git commit -n` в любой связке
+# коротких флагов (-n = --no-verify), выключение lefthook переменными,
+# конфиг git из окружения (GIT_CONFIG_*, --config-env), внешний diff и
+# пейджер (исполняют команду), push с refspec на «+» (принудительный push).
+# shellcheck disable=SC2016
+BYPASS_PATTERNS=(
+    '(^|[^[:alnum:]_-])git([[:space:]]+[^;&|]*)?[[:space:]]commit([[:space:]]+[^;&|]*)?[[:space:]]-[a-zA-Z]*n[a-zA-Z]*([[:space:]]|$)'
+    '(^|[^[:alnum:]_])LEFTHOOK=0'
+    '(^|[^[:alnum:]_])LEFTHOOK_EXCLUDE'
+    '(^|[^[:alnum:]_])GIT_CONFIG_[A-Z_]*'
+    '(^|[^[:alnum:]_])GIT_EXTERNAL_DIFF'
+    '(^|[^[:alnum:]_])GIT_PAGER'
+    '--config-env'
+    '(^|[^[:alnum:]_-])git([[:space:]]+[^;&|]*)?[[:space:]]push([[:space:]]+[^;&|]*)?[[:space:]]\+[^[:space:]]'
+)
+for pattern in "${BYPASS_PATTERNS[@]}"; do
+    if printf '%s' "$COMMAND" | grep -Eq -e "$pattern"; then
+        cat >&2 <<MSG
+БЛОКИРОВКА: команда обходит git-хуки или подменяет конфигурацию git
+(commit -n, LEFTHOOK=0/LEFTHOOK_EXCLUDE, GIT_CONFIG_*, --config-env,
+GIT_EXTERNAL_DIFF, GIT_PAGER, push с refspec «+…»).
+Команда: $COMMAND
+Паттерн: $pattern
+
+Хуки lefthook не обходятся; принудительный push — только руками пользователя.
+Хук: .claude/hooks/deny-destructive.sh
+MSG
+        exit 2
+    fi
+done
+
 for pattern in "${PATTERNS[@]}"; do
     if printf '%s' "$COMMAND" | grep -Eq -e "$pattern"; then
         cat >&2 <<MSG
