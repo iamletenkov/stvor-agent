@@ -66,7 +66,9 @@ func (osFS) Remove(path string) error { return os.Remove(path) }
 
 // App is one stvor-agent process with its dependencies.
 type App struct {
-	Version   string
+	Version string
+	// Commit is the VCS commit of the build (ldflags); "" — unknown.
+	Commit    string
 	FS        FS
 	TokenPath string
 	StatePath string
@@ -82,6 +84,9 @@ type App struct {
 	// Notify and StopNotify are signal.Notify and signal.Stop.
 	Notify     func(c chan<- os.Signal, sig ...os.Signal)
 	StopNotify func(c chan<- os.Signal)
+	// IsTerminal reports whether stdin is a terminal (enable then reads one
+	// line, not up to EOF); nil — never.
+	IsTerminal func(io.Reader) bool
 }
 
 // New is the App of the real machine. Cream and systemctl write their stderr
@@ -103,13 +108,16 @@ func New(ver string, stderr io.Writer) *App {
 		Getenv:     os.Getenv,
 		Notify:     signal.Notify,
 		StopNotify: signal.Stop,
+		IsTerminal: isTerminal,
 	}
 }
 
 // Run executes one stvor-agent command on the real machine and returns the
 // process exit code. The version comes from internal/version (ldflags).
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
-	return New(version.Version, stderr).Run(args, stdin, stdout, stderr)
+	a := New(version.Version, stderr)
+	a.Commit = version.Commit
+	return a.Run(args, stdin, stdout, stderr)
 }
 
 // Run executes one command and returns its exit code. Write errors to stderr
@@ -214,8 +222,12 @@ func (a *App) runVersion(args []string, stdout, stderr io.Writer) int {
 	short := version.Short(a.Version)
 	switch {
 	case len(args) == 0:
-		return writeOut(stdout, fmt.Sprintf("stvor-agent %s (%s %s/%s)\n",
-			short, runtime.Version(), runtime.GOOS, runtime.GOARCH))
+		commit := a.Commit
+		if commit == "" {
+			commit = "unknown"
+		}
+		return writeOut(stdout, fmt.Sprintf("stvor-agent %s (commit %s, %s %s/%s)\n",
+			short, commit, runtime.Version(), runtime.GOOS, runtime.GOARCH))
 	case len(args) == 1 && args[0] == "--short":
 		return writeOut(stdout, short+"\n")
 	case len(args) == 1 && args[0] == "--label":

@@ -7,8 +7,14 @@ import "strings"
 //
 //	go build -ldflags "-X github.com/iamletenkov/stvor-agent/internal/version.Version=4.0.0"
 //
-// It is the only package-level variable allowed to be mutable, and only via ldflags.
+// Version and Commit are the only package-level variables allowed to be
+// mutable, and only via ldflags.
 var Version = "dev"
+
+// Commit is the VCS commit of the build, set like Version
+// (-X …/internal/version.Commit=<sha>); "" — a build without VCS: `version`
+// prints "unknown".
+var Commit = ""
 
 // Short returns the bare X.Y.Z form of the raw version: surrounding spaces and
 // a leading "v" are dropped, an empty value becomes "dev".

@@ -13,6 +13,7 @@ func TestRunDispatch(t *testing.T) {
 		name       string
 		args       []string
 		version    string
+		commit     string
 		wantCode   int
 		wantStdout string // exact when wantExact, otherwise a substring
 		wantExact  bool
@@ -22,6 +23,8 @@ func TestRunDispatch(t *testing.T) {
 		{name: "version --short drops leading v", args: []string{"version", "--short"}, version: "v4.0.0", wantCode: 0, wantStdout: "4.0.0\n", wantExact: true},
 		{name: "version --short without ldflags", args: []string{"version", "--short"}, version: "dev", wantCode: 0, wantStdout: "dev\n", wantExact: true},
 		{name: "version long", args: []string{"version"}, version: "4.0.0", wantCode: 0, wantStdout: "stvor-agent 4.0.0"},
+		{name: "version long with commit", args: []string{"version"}, version: "4.0.0", commit: "0123456789ab", wantCode: 0, wantStdout: "commit 0123456789ab"},
+		{name: "version long without commit", args: []string{"version"}, version: "4.0.0", wantCode: 0, wantStdout: "commit unknown"},
 		{name: "version unknown flag", args: []string{"version", "--frob"}, version: "4.0.0", wantCode: 2, wantStderr: `"--frob"`},
 		{name: "version extra args", args: []string{"version", "--short", "x"}, version: "4.0.0", wantCode: 2, wantStderr: "usage"},
 		{name: "help", args: []string{"help"}, version: "4.0.0", wantCode: 0, wantStdout: "usage: stvor-agent"},
@@ -34,6 +37,7 @@ func TestRunDispatch(t *testing.T) {
 			t.Parallel()
 			e := newEnv(t)
 			e.app.Version = tc.version
+			e.app.Commit = tc.commit
 			code, stdout, stderr := e.run("", tc.args...)
 			if code != tc.wantCode {
 				t.Errorf("exit code = %d, want %d", code, tc.wantCode)

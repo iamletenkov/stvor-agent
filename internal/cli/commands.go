@@ -51,7 +51,7 @@ func (a *App) runEnable(url string, stdin io.Reader, stdout, stderr io.Writer) i
 		_, _ = fmt.Fprintf(stderr, "stvor-agent: enable: URL=%q не по форме https://<хост>[:порт]/robot-api/v1/labels\n", url)
 		return exitError
 	}
-	secret, err := readSecret(stdin)
+	secret, err := readSecret(stdin, a.IsTerminal != nil && a.IsTerminal(stdin))
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "stvor-agent: enable: токен со stdin: %v\n", err)
 		return exitError
@@ -89,9 +89,17 @@ func (a *App) runEnable(url string, stdin io.Reader, stdout, stderr io.Writer) i
 }
 
 // readSecret reads the token from stdin: one line, spaces around it trimmed,
-// 43 chars [A-Za-z0-9_-]. Errors never quote the input.
-func readSecret(stdin io.Reader) (string, error) {
-	data, err := io.ReadAll(io.LimitReader(stdin, maxSecret+1))
+// 43 chars [A-Za-z0-9_-]. From a terminal (tty) it stops at the first newline
+// — Enter is enough; from a pipe or file it reads to EOF and refuses a second
+// line. Errors never quote the input.
+func readSecret(stdin io.Reader, tty bool) (string, error) {
+	var data []byte
+	var err error
+	if tty {
+		data, err = readLine(stdin, maxSecret+1)
+	} else {
+		data, err = io.ReadAll(io.LimitReader(stdin, maxSecret+1))
+	}
 	if err != nil {
 		return "", fmt.Errorf("не прочитан: %w", err)
 	}
@@ -110,6 +118,29 @@ func readSecret(stdin io.Reader) (string, error) {
 		return "", errors.New("токен не по форме (43 знака [A-Za-z0-9_-])")
 	}
 	return s, nil
+}
+
+// readLine reads up to and including the first newline, at most limit bytes,
+// one byte at a time: nothing past the line is consumed.
+func readLine(r io.Reader, limit int) ([]byte, error) {
+	var line []byte
+	b := make([]byte, 1)
+	for len(line) < limit {
+		n, err := r.Read(b)
+		if n == 1 {
+			line = append(line, b[0])
+			if b[0] == '\n' {
+				return line, nil
+			}
+		}
+		if errors.Is(err, io.EOF) {
+			return line, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	return line, nil
 }
 
 // resetStateFor removes state.json when it belongs to another portal address

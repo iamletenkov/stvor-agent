@@ -9,7 +9,10 @@ GOLANGCI_IMAGE ?= golangci/golangci-lint:v2.14.0
 MODULE         := github.com/iamletenkov/stvor-agent
 VERSION        ?= $(shell tr -d '[:space:]' < VERSION 2>/dev/null || echo dev)
 ARCHES         ?= amd64 arm64
-LDFLAGS        := -s -w -buildid= -X $(MODULE)/internal/version.Version=$(VERSION)
+# Коммит сборки для `version` (без флага); вне git — пусто, бинарь печатает «unknown».
+COMMIT         ?= $(shell git rev-parse --short=12 HEAD 2>/dev/null)
+LDFLAGS        := -s -w -buildid= -X $(MODULE)/internal/version.Version=$(VERSION) \
+	-X $(MODULE)/internal/version.Commit=$(COMMIT)
 
 UID := $(shell id -u)
 GID := $(shell id -g)
@@ -45,7 +48,8 @@ build-all: cache ## dist/stvor-agent-linux-{amd64,arm64} (статические
 	done
 	@got="$$($(GO) dist/stvor-agent-linux-amd64 version --short)"; \
 	if [ "$$got" != "$(VERSION)" ]; then echo "version --short = '$$got', ожидалось '$(VERSION)'"; exit 1; fi; \
-	echo "== version --short: $$got"
+	echo "== version --short: $$got"; \
+	echo "== version: $$($(GO) dist/stvor-agent-linux-amd64 version)"
 
 # -race требует cgo: тесты собираются с CGO_ENABLED=1 (gcc есть в образе golang),
 # релизный бинарь — без cgo.

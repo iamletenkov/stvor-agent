@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"bytes"
+	"io"
 	"os"
 	"slices"
 	"strings"
@@ -74,6 +76,46 @@ func TestEnableStdin(t *testing.T) {
 				t.Errorf("token file mode = %04o, want 0600", fi.Mode().Perm())
 			}
 		})
+	}
+}
+
+// lineThenBlock is a terminal: one typed line, then nothing — no EOF until
+// Ctrl-D.
+type lineThenBlock struct {
+	line  []byte
+	block chan struct{}
+}
+
+func (r *lineThenBlock) Read(p []byte) (int, error) {
+	if len(r.line) == 0 {
+		<-r.block
+		return 0, io.EOF
+	}
+	n := copy(p, r.line)
+	r.line = r.line[n:]
+	return n, nil
+}
+
+// From a terminal enable reads one line: Enter is enough, no Ctrl-D.
+func TestEnableStdinTerminal(t *testing.T) {
+	t.Parallel()
+	e := newEnv(t)
+	e.app.IsTerminal = func(io.Reader) bool { return true }
+	in := &lineThenBlock{line: []byte(testToken + "\n"), block: make(chan struct{})}
+	defer close(in.block)
+	done := make(chan int, 1)
+	var stdout, stderr bytes.Buffer
+	go func() { done <- e.app.Run([]string{"enable", "URL=" + testURL}, in, &stdout, &stderr) }()
+	select {
+	case code := <-done:
+		if code != 0 {
+			t.Fatalf("exit code = %d (stderr %q)", code, stderr.String())
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("enable from a terminal waits for EOF after the line")
+	}
+	if tok, err := token.Read(e.fs, e.app.TokenPath); err != nil || tok.Token != testToken {
+		t.Fatalf("token file: %v", err)
 	}
 }
 
