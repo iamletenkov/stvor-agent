@@ -7,10 +7,9 @@
 - Обвязка Claude Code: AGENTS.md, CLAUDE.md, `.claude/`, lefthook, `make ci`.
 
 ## Дальше
-1. Спека: агент на Go — служба-представитель портала Stvor; регистрация Teleport уезжает
-   в расширение `teleport` (cream-extensions); миграция установленных машин и имён
-   (пакет, бинарь, юниты, `/etc/bisquite/teleport`).
-2. ADR на трудно откатываемое из спеки; Go-каркас по образцу cream (Makefile в контейнере).
+1. План по [спеке](specs/2026-10-18-stvor-agent-go.md) — после MVP cream (зависит от `cream run`/`cream set`);
+   переходных пакетов нет. Портал пинит 3.1.0, выпуск 4.0.0 его не задевает до среза Stvor.
+2. ADR-0030 портала — [черновик](research/2026-10-18-stvor-adr-0030-draft.md); переносится в Stvor отдельным срезом.
 3. Оставшиеся ссылки на старое имя: `debian/control.in` (Homepage), NOTICE — по спеке.
 
 ## Сломано
