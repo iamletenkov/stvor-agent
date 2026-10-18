@@ -23,7 +23,7 @@
 пакета и регистрацией ноды в контейнерах); пакет архитектурно
 независимый (`_all.deb`: bash, юниты, схема). Проект вырос из расширения
 `teleport-agent` репозитория
-[bisquite-extensions](https://github.com/iamletenkov/bisquite-extensions);
+[cream-extensions](https://github.com/iamletenkov/cream-extensions) (бывший bisquite-extensions);
 расширение 3.x — тонкая обёртка, которая ставит этот пакет в образ bisquite.
 
 ## Установка
@@ -45,8 +45,8 @@
 
    ```bash
    V=3.0.1
-   curl -fLO https://github.com/iamletenkov/bisquite-teleport-agent/releases/download/v$V/bisquite-teleport-agent_${V}_all.deb
-   curl -fLO https://github.com/iamletenkov/bisquite-teleport-agent/releases/download/v$V/SHA256SUMS
+   curl -fLO https://github.com/iamletenkov/stvor-agent/releases/download/v$V/bisquite-teleport-agent_${V}_all.deb
+   curl -fLO https://github.com/iamletenkov/stvor-agent/releases/download/v$V/SHA256SUMS
    sha256sum -c SHA256SUMS
    sudo apt install ./bisquite-teleport-agent_${V}_all.deb
    ```
@@ -488,12 +488,12 @@ make deb       # dist/bisquite-teleport-agent_<версия>_all.deb и dist/SHA
    опубликованный релиз с заметками из секции, затем job
    `release-artifacts` собирает из тега `.deb` и `SHA256SUMS` и прикладывает
    их к релизу.
-4. После файлов job `dispatch-extensions` запускает в `iamletenkov/bisquite-extensions`
+4. После файлов job `dispatch-extensions` запускает в `iamletenkov/cream-extensions`
    workflow `agent-bump.yml`: тот открывает PR с пином агента в расширении
    `teleport-agent` (версия и sha256 из `SHA256SUMS`), слияние выпускает
    расширения, а их релиз сам поднимает их в `bisquite`. Токен — секрет
    `EXTENSIONS_DISPATCH_TOKEN` этого репозитория: fine-grained PAT только на
-   bisquite-extensions с правом Actions: Read and write, действует до 16.10.2027 —
+   cream-extensions с правом Actions: Read and write, действует до 16.10.2027 —
    до этой даты перевыпустить, иначе job релиза покраснеет.
 
 Теги руками не ставят. Если сборка файлов упала, релиз уже виден без них:
