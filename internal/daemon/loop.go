@@ -1,7 +1,7 @@
 // Package daemon is the service loop of `stvor-agent run` (spec §5.2): the
 // first tick after U[0, 20 s), then "tick → sleep" with jitter and backoff,
-// SIGHUP — tick now, SIGTERM/SIGINT — finish the tick and return, one
-// operation at a time under the agent lock.
+// SIGHUP — tick now, SIGTERM/SIGINT — finish the tick within the stop budget
+// and return, one operation at a time under the agent lock.
 //
 // The failure counter and the backoff live only here, derived from
 // reconcile.Result.Outcome. Time, randomness, signals and the lock are
@@ -21,7 +21,9 @@ import (
 
 // Ticker is what the loop needs from reconcile; *reconcile.Ticker implements it.
 type Ticker interface {
-	Tick(ctx context.Context, manual bool) reconcile.Result
+	// Tick runs one tick; stop is closed when the service is asked to stop
+	// (the tick then starts no set-managed, spec §5.8).
+	Tick(ctx context.Context, manual bool, stop <-chan struct{}) reconcile.Result
 	CheckActions(ctx context.Context) error
 }
 
@@ -44,30 +46,38 @@ type Daemon struct {
 // Run checks the teleport actions once (softly: the Ticker decides what a
 // failure means), then ticks until SIGTERM/SIGINT on sigs or ctx is done, and
 // returns — the service exits 0. SIGHUP cuts a sleep short: tick now (the tick
-// rereads the token itself).
+// rereads the token itself); several SIGHUPs before the next tick are one.
 //
-// A tick is never interrupted: signals are only read between ticks, so a
-// stop waits for the running tick and its child `cream run` (spec §5.8). The
-// caller must not cancel ctx on SIGTERM (signal.Notify into sigs, not
-// signal.NotifyContext), or the tick's commands would be cut.
+// Signals are read all the time. A stop during a tick closes the tick's stop
+// channel and is never a cancel of ctx: the tick cuts its portal poll, starts
+// no set-managed, and a set-managed already running — the child `cream run`
+// restarting the Teleport agent — is waited for (spec §5.8, TimeoutStopSec).
+// A stop wins over pending SIGHUPs. The caller must not cancel ctx on SIGTERM
+// (signal.Notify into sigs, not signal.NotifyContext).
 func (d *Daemon) Run(ctx context.Context, sigs <-chan os.Signal) {
 	log := d.log()
 	interval := d.Interval
 	if interval <= 0 {
 		interval = DefaultInterval
 	}
+	stop := make(chan struct{})
+	hup := make(chan struct{}, 1)
+	done := make(chan struct{})
+	defer close(done)
+	go pump(sigs, stop, hup, done)
+
 	_ = d.Ticker.CheckActions(ctx) // soft check: the Ticker logs and acts on the error itself
 
 	sleep := jitter(d.Rand)
 	n := 0
 	for {
 		log.Debug("сон до следующего тика", "event", "sleep", "next_in", sleep)
-		if !d.wait(ctx, sigs, sleep) {
+		if !d.wait(ctx, stop, hup, sleep) {
 			log.Info("остановка службы", "event", "stop")
 			return
 		}
 		start := time.Now()
-		res := d.tick(ctx)
+		res := d.tick(ctx, stop)
 		var base time.Duration
 		var withJitter bool
 		n, base, withJitter = Next(interval, n, res.Outcome)
@@ -80,34 +90,63 @@ func (d *Daemon) Run(ctx context.Context, sigs <-chan os.Signal) {
 	}
 }
 
-// wait sleeps for d; false — stop (SIGTERM/SIGINT or ctx done), true — tick
-// (the timer fired or SIGHUP came).
-func (d *Daemon) wait(ctx context.Context, sigs <-chan os.Signal, dur time.Duration) bool {
-	after := d.After
-	if after == nil {
-		after = time.After
-	}
-	timer := after(dur)
+// pump turns signals into state: SIGTERM/SIGINT close stop (once), SIGHUP
+// sets hup (one pending at most), until done.
+func pump(sigs <-chan os.Signal, stop chan<- struct{}, hup chan<- struct{}, done <-chan struct{}) {
+	stopped := false
 	for {
 		select {
-		case <-ctx.Done():
-			return false
-		case <-timer:
-			return true
+		case <-done:
+			return
 		case s := <-sigs:
-			if s == syscall.SIGHUP {
-				d.log().Info("SIGHUP — тик сейчас", "event", "signal", "signal", "SIGHUP")
-				return true
-			}
-			if s == syscall.SIGTERM || s == os.Interrupt {
-				return false
+			switch {
+			case s == syscall.SIGHUP:
+				select {
+				case hup <- struct{}{}:
+				default: // one pending SIGHUP is enough
+				}
+			case (s == syscall.SIGTERM || s == os.Interrupt) && !stopped:
+				stopped = true
+				close(stop)
 			}
 		}
 	}
 }
 
+// wait sleeps for dur; false — stop (SIGTERM/SIGINT or ctx done), true — tick
+// (the timer fired or SIGHUP came). A stop is checked first and last, so it
+// wins over a pending SIGHUP and a timer firing at the same moment.
+func (d *Daemon) wait(ctx context.Context, stop <-chan struct{}, hup <-chan struct{}, dur time.Duration) bool {
+	if isClosed(stop) || ctx.Err() != nil {
+		return false
+	}
+	after := d.After
+	if after == nil {
+		after = time.After
+	}
+	select {
+	case <-ctx.Done():
+		return false
+	case <-stop:
+		return false
+	case <-after(dur):
+	case <-hup:
+		d.log().Info("SIGHUP — тик сейчас", "event", "signal", "signal", "SIGHUP")
+	}
+	return !isClosed(stop) && ctx.Err() == nil
+}
+
+func isClosed(c <-chan struct{}) bool {
+	select {
+	case <-c:
+		return true
+	default:
+		return false
+	}
+}
+
 // tick runs one service tick under the non-blocking lock.
-func (d *Daemon) tick(ctx context.Context) reconcile.Result {
+func (d *Daemon) tick(ctx context.Context, stop <-chan struct{}) reconcile.Result {
 	unlock, err := d.Lock.TryLock()
 	if err != nil {
 		if errors.Is(err, ErrLocked) {
@@ -120,7 +159,7 @@ func (d *Daemon) tick(ctx context.Context) reconcile.Result {
 		return reconcile.Result{Outcome: reconcile.OutcomeSkippedLocked}
 	}
 	defer unlock()
-	return d.Ticker.Tick(ctx, false)
+	return d.Ticker.Tick(ctx, false, stop)
 }
 
 func (d *Daemon) log() *slog.Logger {
@@ -139,5 +178,5 @@ func Sync(ctx context.Context, l WaitLocker, t Ticker) (reconcile.Result, error)
 		return reconcile.Result{}, err
 	}
 	defer unlock()
-	return t.Tick(ctx, true), nil
+	return t.Tick(ctx, true, nil), nil
 }

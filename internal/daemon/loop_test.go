@@ -30,11 +30,14 @@ type fakeTicker struct {
 	// waited on before the tick returns.
 	started chan struct{}
 	release chan struct{}
+	// stops are the stop channels the ticks got.
+	stops []<-chan struct{}
 }
 
-func (f *fakeTicker) Tick(_ context.Context, manual bool) reconcile.Result {
+func (f *fakeTicker) Tick(_ context.Context, manual bool, stop <-chan struct{}) reconcile.Result {
 	f.mu.Lock()
 	f.manual = append(f.manual, manual)
+	f.stops = append(f.stops, stop)
 	res := reconcile.Result{Outcome: reconcile.OutcomeOK, HTTPStatus: 200}
 	if len(f.results) > 0 {
 		res, f.results = f.results[0], f.results[1:]
@@ -414,6 +417,14 @@ func TestRunSIGTERMDuringTickWaitsForIt(t *testing.T) {
 		t.Fatal("Run returned while the tick was running")
 	case <-time.After(50 * time.Millisecond):
 	}
+	tk.mu.Lock()
+	stop := tk.stops[0]
+	tk.mu.Unlock()
+	select {
+	case <-stop:
+	case <-time.After(5 * time.Second):
+		t.Fatal("SIGTERM during the tick did not close the tick's stop channel")
+	}
 	close(tk.release)
 	h.waitDone()
 	if l, u := lock.counts(); l != 1 || u != 1 {
@@ -422,6 +433,66 @@ func TestRunSIGTERMDuringTickWaitsForIt(t *testing.T) {
 	if n := len(tk.ticks()); n != 1 {
 		t.Fatalf("ticks = %d, want 1", n)
 	}
+}
+
+// waitDrained waits until the daemon has read every signal sent so far.
+func (h *harness) waitDrained() {
+	h.t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for len(h.sigs) > 0 {
+		if time.Now().After(deadline) {
+			h.t.Fatal("signals not read")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	time.Sleep(50 * time.Millisecond) // the last one is handled, not only received
+}
+
+// A stop wins over SIGHUPs that came before it: no tick after the stop.
+func TestRunStopWinsOverPendingSIGHUP(t *testing.T) {
+	t.Parallel()
+	tk := &fakeTicker{started: make(chan struct{}, 4), release: make(chan struct{})}
+	h := start(t, tk, &fakeLock{})
+	h.expectSleep(testJitter)
+	<-tk.started
+	h.sigs <- syscall.SIGHUP
+	h.sigs <- syscall.SIGHUP
+	h.sigs <- syscall.SIGTERM
+	h.waitDrained()
+	close(tk.release)
+	h.waitDone()
+	if n := len(tk.ticks()); n != 1 {
+		t.Fatalf("ticks = %d, want 1: SIGHUP before SIGTERM must not tick again", n)
+	}
+}
+
+// SIGHUPs during a tick are one: one more tick, then the plain sleep.
+func TestRunSIGHUPsDuringTickAreOne(t *testing.T) {
+	t.Parallel()
+	tk := &fakeTicker{started: make(chan struct{}, 8), release: make(chan struct{})}
+	h := start(t, tk, &fakeLock{})
+	h.expectSleep(testJitter)
+	<-tk.started
+	for range 3 {
+		h.sigs <- syscall.SIGHUP
+	}
+	h.waitDrained()
+	close(tk.release)
+	<-tk.started // the SIGHUP tick
+	// Each wait asks for a sleep, the one cut by the SIGHUP included: two
+	// sleeps after the first tick, then nothing — no third tick.
+	h.next()
+	h.next()
+	select {
+	case r := <-h.sleeps:
+		t.Fatalf("another sleep %v: SIGHUPs were not coalesced", r.d)
+	case <-time.After(100 * time.Millisecond):
+	}
+	if n := len(tk.ticks()); n != 2 {
+		t.Fatalf("ticks = %d, want 2", n)
+	}
+	h.sigs <- syscall.SIGTERM
+	h.waitDone()
 }
 
 func TestRunContextCancelExits(t *testing.T) {

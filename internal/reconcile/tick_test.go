@@ -148,7 +148,7 @@ func (r *rig) steady() {
 func (r *rig) tick(t *testing.T, manual bool) Result {
 	t.Helper()
 	r.log.Reset()
-	res := r.tk.Tick(context.Background(), manual)
+	res := r.tk.Tick(context.Background(), manual, nil)
 	if strings.Contains(r.log.String(), testToken) {
 		t.Fatalf("токен в журнале: %s", r.log.String())
 	}
@@ -170,6 +170,12 @@ func unconfirmable(f *teleportfake.Fake, l teleport.Labels) (teleport.SetResult,
 	return teleport.SetResult{Status: f.Current, Result: teleport.ResultUnconfirmed}, nil
 }
 
+// brief keeps the fields the tests compare whole; the end state (Expected,
+// Teleport, InEffect) is checked by the tests that need it.
+func brief(r Result) Result {
+	return Result{Outcome: r.Outcome, HTTPStatus: r.HTTPStatus, Apply: r.Apply, TokenErr: r.TokenErr}
+}
+
 func lines(s string) int { return strings.Count(strings.TrimSpace(s), "\n") + 1 }
 
 // --- 200 / 304 --------------------------------------------------------------
@@ -184,7 +190,7 @@ func TestTick200Applies(t *testing.T) {
 	res := r.tick(t, false)
 
 	want := Result{Outcome: OutcomeOK, HTTPStatus: 200, Apply: ApplyApplied}
-	if !reflect.DeepEqual(res, want) {
+	if !reflect.DeepEqual(brief(res), want) {
 		t.Fatalf("result = %+v, want %+v", res, want)
 	}
 	if got := r.tp.SetCalls(); !reflect.DeepEqual(got, []teleport.Labels{labelsB}) {
@@ -229,7 +235,7 @@ func TestTickSteadyState(t *testing.T) {
 			res := r.tick(t, false)
 
 			want := Result{Outcome: tc.outcome, HTTPStatus: tc.status}
-			if !reflect.DeepEqual(res, want) {
+			if !reflect.DeepEqual(brief(res), want) {
 				t.Fatalf("result = %+v, want %+v", res, want)
 			}
 			if req := r.portal.last(t); req.Revision != revB || !req.ReportApplied {
@@ -651,7 +657,7 @@ func TestTickPortalFailures(t *testing.T) {
 			res := r.tick(t, false)
 
 			want := Result{Outcome: Outcome(tc.outcome), HTTPStatus: tc.status}
-			if !reflect.DeepEqual(res, want) {
+			if !reflect.DeepEqual(brief(res), want) {
 				t.Fatalf("result = %+v, want %+v", res, want)
 			}
 			if n := len(r.tp.SetCalls()); n != 0 {
