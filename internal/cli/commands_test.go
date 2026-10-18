@@ -302,6 +302,34 @@ func TestSyncCodes(t *testing.T) {
 	}
 }
 
+// sync reports the tick's end state: no managed-status of its own outside the
+// agent lock.
+func TestSyncNoSecondStatus(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name   string
+		setup  func(e *env)
+		status int // managed-status calls: the tick's only
+	}{
+		{"in effect", func(*env) {}, 1},
+		{"applied", func(e *env) { e.tp.Current.Managed = teleport.Labels{Env: "dev", Space: "sp-0"} }, 2},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			e := newEnv(t)
+			e.writeToken()
+			tc.setup(e)
+			if code, stdout, stderr := e.run("", "sync"); code != 0 {
+				t.Fatalf("exit code = %d (stdout %q, stderr %q)", code, stdout, stderr)
+			}
+			if got := e.tp.StatusCalls(); got != tc.status {
+				t.Fatalf("managed-status calls = %d, want %d", got, tc.status)
+			}
+		})
+	}
+}
+
 func TestSyncLockTimeout(t *testing.T) {
 	t.Parallel()
 	e := newEnv(t)

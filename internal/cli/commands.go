@@ -162,8 +162,7 @@ func (a *App) runDisable(stdout, stderr io.Writer) int {
 // service retries); 1 — a body not by the contract, a restart not confirmed,
 // a broken token, teleport state unknown.
 func (a *App) runSync(stdout, stderr io.Writer) int {
-	ctx := context.Background()
-	res, err := daemon.Sync(ctx, a.Lock, a.ticker(newLogger(stderr, slog.LevelInfo)))
+	res, err := daemon.Sync(context.Background(), a.Lock, a.ticker(newLogger(stderr, slog.LevelInfo)))
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "stvor-agent: sync: %v\n", err)
 		return exitError
@@ -203,20 +202,19 @@ func (a *App) runSync(stdout, stderr io.Writer) int {
 		return exitOK
 	}
 
-	st, err := state.Load(a.FS, a.StatePath)
-	if err != nil || st.Expected == nil {
+	// The tick's end state, seen under the lock: no second managed-status.
+	switch {
+	case res.Expected == nil:
 		return fail("портал ответил 304, а запомненных меток нет — повторите sync")
-	}
-	w := teleport.Labels(st.Expected.Labels)
-	ts, err := a.Teleport.Status(ctx)
-	if err != nil {
-		return fail("метки не действуют: состояние teleport неизвестно: %v", err)
-	}
-	if !reconcile.InEffect(ts, w) {
+	case res.StatusErr != nil:
+		return fail("метки не действуют: состояние teleport неизвестно: %v", res.StatusErr)
+	case !res.InEffect:
+		ts := res.Teleport
 		return fail("метки не действуют: в teleport %s, pending=%t joined=%t active=%t",
 			labelsText(ts.Managed), ts.Pending, ts.Joined, ts.Active)
 	}
-	_, _ = fmt.Fprintf(stdout, "метки действуют: %s (ревизия %s)\n", labelsText(w), st.Expected.Revision)
+	w := teleport.Labels(res.Expected.Labels)
+	_, _ = fmt.Fprintf(stdout, "метки действуют: %s (ревизия %s)\n", labelsText(w), res.Expected.Revision)
 	return exitOK
 }
 
