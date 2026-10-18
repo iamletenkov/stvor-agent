@@ -1,0 +1,7 @@
+{"cream":"1.0.0","command":"actions","ok":true,
+ "result":{"extension":"teleport","actions":[
+  {"name":"join","summary":"зарегистрировать узел","args":"pairs","stdin":"secret","lock":"exclusive","output":"text","timeout":"5m0s","phases":["live"],"root":true},
+  {"name":"managed-status","summary":"управляемые метки и состояние узла","args":"none","stdin":"none","lock":"none","output":"json","timeout":"2m0s","phases":["live"],"root":true},
+  {"name":"set-managed","summary":"заменить набор управляемых меток","args":"free","stdin":"none","lock":"exclusive","output":"json","timeout":"2m0s","phases":["live"],"root":true}
+ ]},
+ "warnings":[],"error":null}
