@@ -1,0 +1,21 @@
+# golangci-lint v2. Версия линтера закреплена в Makefile (GOLANGCI_IMAGE).
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard   # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - errorlint
+    - gocritic
+    - misspell
+    - revive
+    - unconvert
+    - unparam
+    - usestdlibvars
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
