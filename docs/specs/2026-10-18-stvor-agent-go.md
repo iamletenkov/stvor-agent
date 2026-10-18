@@ -335,7 +335,8 @@ S проверяет ответ строго (`schema == 1`, ключи и зн�
  "restart":{"attempts":0,"paused_until":null},
  "last_poll":{"at":"2026-10-18T10:00:00Z","outcome":"not_modified","http_status":304}}
 ```
-  `token`: `ok | absent | bad_mode | bad_owner | corrupt`; `outcome`: `ok | not_modified | unauthorized | rate_limited |
+  `token`: `ok | absent | bad_mode | bad_owner | no_access | corrupt` (`no_access` — запуск не от root: файл закрыт,
+  `enabled` — `null`, код 1, причина «нужен root для полного статуса» в stderr); `outcome`: `ok | not_modified | unauthorized | rate_limited |
   network | redirect | http_error | bad_body | skipped_locked`. Без `--json` — те же поля таблицей по-русски.
 - Портал видит агента через существующие поля (`pulled_at`, `applied_revision`, метка `stvor_agent` в инвентаре) —
   новых каналов телеметрии нет.

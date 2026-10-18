@@ -34,6 +34,9 @@ var (
 	ErrBadMode  = errors.New("права файла токена шире допустимого")
 	ErrBadOwner = errors.New("владелец файла токена не root")
 	ErrCorrupt  = errors.New("файл токена испорчен")
+	// ErrNoAccess: the file or its directory is closed to this user — not
+	// root; nothing is known about the file.
+	ErrNoAccess = errors.New("нет доступа к файлу токена — нужен root")
 )
 
 var (
@@ -84,7 +87,7 @@ func ValidURL(u string) bool { return reURL.MatchString(u) }
 // [A-Za-z0-9_-].
 func ValidToken(s string) bool { return reToken.MatchString(s) }
 
-// Kind is the class of a Read error: absent, bad_mode, bad_owner or corrupt;
+// Kind is the class of a Read error: absent, bad_mode, bad_owner, no_access or corrupt;
 // "" for nil. An error of no known class counts as corrupt.
 func Kind(err error) string {
 	switch {
@@ -96,6 +99,8 @@ func Kind(err error) string {
 		return "bad_mode"
 	case errors.Is(err, ErrBadOwner):
 		return "bad_owner"
+	case errors.Is(err, ErrNoAccess):
+		return "no_access"
 	default:
 		return "corrupt"
 	}
@@ -103,12 +108,15 @@ func Kind(err error) string {
 
 // Read loads and checks the token file. The file is opened without following
 // symlinks, and its mode and owner come from fstat of the same descriptor.
-// Every error wraps one of ErrAbsent, ErrBadMode, ErrBadOwner, ErrCorrupt.
+// Every error wraps one of ErrAbsent, ErrBadMode, ErrBadOwner, ErrNoAccess,
+// ErrCorrupt.
 func Read(fsys FS, path string) (Token, error) {
 	data, info, err := fsys.ReadNoFollow(path, maxSize)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		return Token{}, fmt.Errorf("%s: %w", path, ErrAbsent)
+	case errors.Is(err, fs.ErrPermission):
+		return Token{}, fmt.Errorf("%s: %w", path, ErrNoAccess)
 	case errors.Is(err, atomicfile.ErrNotRegular):
 		return Token{}, fmt.Errorf("%s: не обычный файл: %w", path, ErrBadMode)
 	case errors.Is(err, atomicfile.ErrTooBig):
@@ -134,6 +142,9 @@ func Read(fsys FS, path string) (Token, error) {
 
 func checkDir(fsys FS, dir string) error {
 	info, err := fsys.Lstat(dir)
+	if errors.Is(err, fs.ErrPermission) {
+		return fmt.Errorf("%s: %w", dir, ErrNoAccess)
+	}
 	if err != nil {
 		return fmt.Errorf("%s: каталог не прочитан: %w", dir, ErrBadMode)
 	}
