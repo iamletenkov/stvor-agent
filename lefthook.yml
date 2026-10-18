@@ -36,7 +36,7 @@ pre-commit:
                    zricethezav/gitleaks:v8.30.1 protect --source=/repo --staged --redact -v 2>&1)"
           rc=$?
           printf '%s\n' "$out"
-          staged="$(git diff --cached --numstat | grep -cv '^-')" || true
+          staged="$(git diff --cached --diff-filter=d --numstat | awk '$1 != "-" && $1 > 0' | wc -l)"
           if [ "${staged:-0}" -gt 0 ] && printf '%s' "$out" | grep -qE 'scanned ~0 bytes'; then
             echo "gitleaks: staged-файлы есть, а просканировано 0 байт — это отказ проверки" >&2
             exit 1
