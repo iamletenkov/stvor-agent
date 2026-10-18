@@ -14,7 +14,7 @@
 Волна A — SA, не зависит от cream:
 - [x] Task 1: Go-каркас SA, общие интерфейсы и типы (go.mod, Makefile, main.go)
 - [ ] Task 2: `internal/portal` — клиент `/robot-api/v1/labels` и строгий разбор тела
-- [ ] Task 3: `internal/token`, `internal/state`, `internal/atomicfile`
+- [x] Task 3: `internal/token`, `internal/state`, `internal/atomicfile`
 - [ ] Task 4: `internal/teleport` — exec-адаптер `cream run teleport …` на поддельном cream, файлы-образцы контракта
 - [ ] Task 5: `internal/reconcile` — один тик
 - [ ] Task 6: `internal/daemon` — цикл, джиттер, backoff, сигналы, блокировка
