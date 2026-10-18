@@ -1,0 +1,44 @@
+# stvor-agent: keeps the Teleport labels of this robot equal to the portal (spec §5, §9.1).
+# Runs as root: children (cream, the teleport extension) write /etc/cream/teleport,
+# /etc/teleport.yaml, /var/lib/cream/ext/teleport and restart teleport.service (spec §6).
+# Hardening is inherited by those children, so no ProtectSystem= and no ReadWritePaths=.
+[Unit]
+Description=Stvor agent: Teleport labels from the portal
+Documentation=https://github.com/iamletenkov/stvor-agent
+ConditionPathExists=/etc/stvor-agent/token
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/stvor-agent run
+Restart=always
+RestartSec=10
+# SIGTERM to the agent only: it waits for the current tick (and its cream run) to end.
+KillMode=mixed
+TimeoutStopSec=90
+# STVOR_AGENT_INTERVAL, STVOR_AGENT_LOG_LEVEL (cream domain stvor-agent).
+EnvironmentFile=-/etc/cream/stvor-agent/config
+StateDirectory=stvor-agent
+StateDirectoryMode=0700
+SyslogIdentifier=stvor-agent
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
