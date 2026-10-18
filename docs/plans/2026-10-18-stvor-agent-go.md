@@ -22,7 +22,7 @@
 - [x] Task 6: `internal/daemon` — цикл, джиттер, backoff, сигналы, блокировка
 - [x] Task 7: юнит `packaging/stvor-agent.service` и его тест
 - [x] Task 8: `internal/cli` и сборка команд в `cmd/stvor-agent`
-- [ ] Task 9: `docs/test-map.md` — перенос проверок `tests/test-labels.sh`, доводка недостающих Go-тестов
+- [x] Task 9: `docs/test-map.md` — перенос проверок `tests/test-labels.sh`, доводка недостающих Go-тестов
 
 Волна B — после релиза cream `v1.0.0`:
 - [ ] Task 10: CE — инструменты проверки для `cream/v1` (`cream validate`, `check.sh`, Makefile)
