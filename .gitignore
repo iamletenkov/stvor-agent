@@ -1,1 +1,13 @@
 dist/
+
+# Временное агентов и людей
+/.scratchpad/
+/.cache/
+
+# Локальное окружение и секреты
+.env
+.env.*
+!.env.example
+/.mcp.json
+/.aim/
+/.claude/settings.local.json

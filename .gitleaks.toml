@@ -1,0 +1,17 @@
+title = "gitleaks config"
+
+[extend]
+  useDefault = true
+
+[allowlist]
+  description = "Шаблоны и плейсхолдеры"
+  paths = [
+    '''\.mcp\.json\.example$''',
+  ]
+  regexTarget = "line"
+  regexes = [
+    '''<[A-Z_]+>''',
+    '''\$\{[A-Z0-9_]+\}''',
+    '''REPLACE_ME''',
+    '''example\.(com|org)''',
+  ]
