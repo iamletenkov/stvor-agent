@@ -18,7 +18,7 @@
 - [x] Task 3: `internal/token`, `internal/state`, `internal/atomicfile`
 
 - [x] Task 4: `internal/teleport` — exec-адаптер `cream run teleport …` на поддельном cream, файлы-образцы контракта
-- [ ] Task 5: `internal/reconcile` — один тик
+- [x] Task 5: `internal/reconcile` — один тик
 - [ ] Task 6: `internal/daemon` — цикл, джиттер, backoff, сигналы, блокировка
 - [ ] Task 7: юнит `packaging/stvor-agent.service` и его тест
 - [ ] Task 8: `internal/cli` и сборка команд в `cmd/stvor-agent`
