@@ -112,7 +112,12 @@ func InEffect(s teleport.Status, w teleport.Labels) bool {
 // expected labels with teleport, apply, remember. manual (sync by a person)
 // is never paused by the 3×/15 min rule. The tick writes last_poll and
 // failures to state.json after every poll; it does not suggest a sleep.
-func (t *Ticker) Tick(ctx context.Context, manual bool) Result {
+//
+// stop closed means the service is asked to stop (spec §5.8, TimeoutStopSec):
+// the portal poll is cut through its own context, set-managed is not started,
+// and the managed-status after it is skipped; a set-managed already running is
+// waited for — ctx is never cancelled by a stop. nil — never stops (CLI).
+func (t *Ticker) Tick(ctx context.Context, manual bool, stop <-chan struct{}) Result {
 	log := t.log()
 	tok, err := t.Tokens.Read()
 	if errors.Is(err, token.ErrAbsent) {
@@ -148,7 +153,12 @@ func (t *Ticker) Tick(ctx context.Context, manual bool) Result {
 			tsErr == nil && InEffect(ts, want(st.Expected))
 	}
 
-	resp, err := t.Portal.Get(ctx, req)
+	resp, err := t.poll(ctx, req, stop)
+	if stopped(stop) && err == nil && resp.Outcome == portal.OutcomeNetwork {
+		// Cut by the stop, not a portal failure: neither counted nor saved.
+		log.Info("остановка службы — опрос портала прерван", "event", "skip", "reason", "stopping")
+		return Result{Outcome: OutcomeNetwork, Expected: st.Expected}
+	}
 	if err != nil {
 		// Nothing was sent: the token file and state passed their checks,
 		// so this is a broken invariant; count it as a network failure.
@@ -191,13 +201,17 @@ func (t *Ticker) Tick(ctx context.Context, manual bool) Result {
 
 	w := want(st.Expected)
 	rev := st.Expected.Revision
+	exp := *st.Expected
+	res.Expected = &exp
 	if tsErr != nil {
 		log.Error("состояние teleport неизвестно (managed-status) — метки не тронуты",
 			"event", "apply", "result", ApplyError, "err", tsErr)
 		res.Apply = ApplyError
+		res.StatusErr = tsErr
 		t.save(st)
 		return res
 	}
+	res.Teleport = ts
 
 	if !InEffect(ts, w) {
 		if t.noApply.Load() {
@@ -211,6 +225,13 @@ func (t *Ticker) Tick(ctx context.Context, manual bool) Result {
 			log.Warn("перезапуск пропущен: "+strconv.Itoa(a.Count)+" неподтверждённых подряд, агент активен",
 				"event", "skip", "reason", "paused", "attempts", a.Count, "next_in", next.Sub(now))
 			res.Apply = ApplyPaused
+			t.save(st)
+			return res
+		}
+		if stopped(stop) {
+			log.Info("остановка службы — set-managed не начат, метки применятся после старта",
+				"event", "skip", "reason", "stopping", "env", w.Env, "space", w.Space, "rev", rev)
+			res.Apply = ApplyStopped
 			t.save(st)
 			return res
 		}
@@ -238,22 +259,60 @@ func (t *Ticker) Tick(ctx context.Context, manual bool) Result {
 			log.Error("агент teleport не подтвердил перезапуск с новыми метками", "event", "apply",
 				"result", r.Result, "attempt", a.Count+1, "env", w.Env, "space", w.Space, "rev", rev)
 		}
+		if stopped(stop) {
+			// Keep within the stop budget: the next tick after start checks.
+			log.Info("остановка службы — состояние после set-managed проверит следующий тик",
+				"event", "apply", "result", r.Result, "rev", rev)
+			res.Teleport = r.Status
+			t.save(st)
+			return res
+		}
 		ts, tsErr = t.Teleport.Status(ctx)
 		if tsErr != nil {
 			log.Error("состояние teleport после set-managed неизвестно — ревизия не отмечена",
 				"event", "apply", "result", r.Result, "err", tsErr)
+			res.StatusErr = tsErr
 			t.save(st)
 			return res
 		}
+		res.Teleport = ts
 	}
 
-	if InEffect(ts, w) && st.AppliedRevision != rev {
+	res.InEffect = InEffect(ts, w)
+	if res.InEffect && st.AppliedRevision != rev {
 		st.AppliedRevision = rev
 		log.Info("метки портала действуют — портал узнает на следующем тике", "event", "apply",
 			"rev", rev, "env", w.Env, "space", w.Space)
 	}
 	t.save(st)
 	return res
+}
+
+// poll asks the portal; a stop cancels the poll's own context (only it).
+func (t *Ticker) poll(ctx context.Context, req portal.Request, stop <-chan struct{}) (portal.Response, error) {
+	if stop == nil {
+		return t.Portal.Get(ctx, req)
+	}
+	pctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go func() {
+		select {
+		case <-stop:
+			cancel()
+		case <-pctx.Done():
+		}
+	}()
+	return t.Portal.Get(pctx, req)
+}
+
+// stopped reports whether stop is closed; a nil stop never is.
+func stopped(stop <-chan struct{}) bool {
+	select {
+	case <-stop:
+		return true
+	default:
+		return false
+	}
 }
 
 // logPollFailure writes the one journal line of a failed poll. resp.Err never

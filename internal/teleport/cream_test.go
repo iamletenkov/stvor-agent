@@ -487,10 +487,11 @@ func TestCheckActions(t *testing.T) {
 	}
 }
 
-// TestRunEnvelopeSample: the sample `cream run --json` envelope (the expected
-// form of the cream golden run-*.json) carries the managed-status contract
-// file byte for byte in result.output. The agent itself calls run without
-// --json; the sample is kept for the check against cream T15 golden files.
+// TestRunEnvelopeSample: the sample `cream run --json` envelope (the form of
+// the cream golden run-*.json) carries the managed-status contract file in
+// result.output — the same bytes after json.Compact (the envelope is
+// indented, the contract file is one line). The agent itself calls run
+// without --json; the sample is kept for the check against cream T15.
 func TestRunEnvelopeSample(t *testing.T) {
 	t.Parallel()
 	data, err := os.ReadFile(filepath.Join("testdata", "cream", "run-managed-status.json"))
@@ -512,15 +513,23 @@ func TestRunEnvelopeSample(t *testing.T) {
 	if env.Command != "run" || !env.OK || env.Result.Action != "teleport/managed-status" || env.Result.ExitCode != 0 {
 		t.Errorf("конверт: %+v", env)
 	}
-	c, _ := fake(t, scenario{Stdout: string(env.Result.Output)})
-	got, err := c.Status(context.Background())
+	contract, err := os.ReadFile(filepath.Join("testdata", "managed-status-joined.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	want, _ := fake(t, scenario{StdoutFile: "managed-status-joined.json"})
-	w, err := want.Status(context.Background())
-	if err != nil || got != w {
-		t.Errorf("output конверта = %+v, файл-образец = %+v (%v)", got, w, err)
+	var got, want bytes.Buffer
+	if err := json.Compact(&got, env.Result.Output); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Compact(&want, contract); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got.Bytes(), want.Bytes()) {
+		t.Errorf("output конверта:\n%s\nфайл-образец:\n%s", got.Bytes(), want.Bytes())
+	}
+	c, _ := fake(t, scenario{Stdout: got.String() + "\n"})
+	if _, err := c.Status(context.Background()); err != nil {
+		t.Errorf("output конверта не принят строгим разбором: %v", err)
 	}
 }
 

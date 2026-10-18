@@ -25,7 +25,7 @@ type statusDoc struct {
 	Schema          int          `json:"schema"`
 	Version         string       `json:"version"`
 	Service         string       `json:"service"`
-	Enabled         bool         `json:"enabled"`
+	Enabled         *bool        `json:"enabled"` // null — unknown: no access to the token file (not root)
 	URL             *string      `json:"url"`
 	Token           string       `json:"token"`
 	Expected        *expectedDoc `json:"expected"`
@@ -97,7 +97,7 @@ func (a *App) runStatus(args []string, stdout, stderr io.Writer) int {
 	} else {
 		code = writeHuman(stdout, doc)
 	}
-	if code == exitOK && !doc.Enabled {
+	if code == exitOK && (doc.Enabled == nil || !*doc.Enabled) {
 		return exitError
 	}
 	return code
@@ -119,7 +119,12 @@ func (a *App) collectStatus(ctx context.Context) (statusDoc, []string) {
 	} else {
 		doc.URL = &tok.URL
 	}
-	doc.Enabled = doc.Token != "absent"
+	if errors.Is(terr, token.ErrNoAccess) {
+		problems = append(problems, "нужен root для полного статуса: файл токена закрыт для этого пользователя")
+	} else {
+		enabled := doc.Token != "absent"
+		doc.Enabled = &enabled
+	}
 
 	st, err := state.Load(a.FS, a.StatePath)
 	haveState := err == nil && (terr != nil || st.URL == tok.URL)
@@ -173,6 +178,10 @@ func writeHuman(stdout io.Writer, d statusDoc) int {
 		}
 		return *s
 	}
+	enabled := "неизвестно (нужен root)"
+	if d.Enabled != nil {
+		enabled = yes(*d.Enabled)
+	}
 	expected := "—"
 	if e := d.Expected; e != nil {
 		expected = fmt.Sprintf("env=%s space=%s (ревизия %s)", e.Env, e.Space, e.Revision)
@@ -198,7 +207,7 @@ func writeHuman(stdout io.Writer, d statusDoc) int {
 	for _, row := range [][2]string{
 		{"версия", d.Version},
 		{"служба", d.Service},
-		{"включён", yes(d.Enabled)},
+		{"включён", enabled},
 		{"портал", orDash(d.URL)},
 		{"токен", d.Token},
 		{"ожидаемые метки", expected},

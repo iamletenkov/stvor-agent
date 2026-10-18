@@ -230,12 +230,12 @@ func jsonObject(data []byte) bool {
 }
 
 // parseActions reads the names of actions from `cream actions <ext> --json`.
-// The envelope is cream §11.4; the form of result is fixed by the golden files
-// of cream T15 (expected form — testdata/cream/actions-teleport.json:
-// result.actions is a list of objects with "name"). Until then the reader is
-// tolerant: unknown fields anywhere are ignored, and result.actions may also be
-// an object keyed by name, or result itself the list. Any doubt is an error —
-// CheckActions turns it into "unknown", never into "missing".
+// The envelope is cream §11.4, the form of result — the golden files of cream
+// T15 (internal/cli/testdata/golden/actions*.json; the sample here is
+// testdata/cream/actions-teleport.json): result is an object whose actions is
+// a list of objects with a string "name". Fields beyond those are ignored.
+// Any other form is an error — CheckActions turns it into "unknown", never
+// into "missing".
 func parseActions(data []byte) (map[string]bool, error) {
 	dec := json.NewDecoder(bytes.NewReader(data))
 	var env struct {
@@ -254,34 +254,22 @@ func parseActions(data []byte) (map[string]bool, error) {
 	if len(env.Result) == 0 || string(env.Result) == "null" {
 		return nil, errors.New("в конверте cream actions нет result")
 	}
-	list := env.Result
-	var obj struct {
-		Actions json.RawMessage `json:"actions"`
+	var result struct {
+		Actions []map[string]json.RawMessage `json:"actions"`
 	}
-	if json.Unmarshal(env.Result, &obj) == nil {
-		if len(obj.Actions) == 0 {
-			return nil, errors.New("в result cream actions нет actions")
-		}
-		list = obj.Actions
+	if err := json.Unmarshal(env.Result, &result); err != nil {
+		return nil, errors.New("неизвестная форма result cream actions")
+	}
+	if result.Actions == nil {
+		return nil, errors.New("в result cream actions нет списка actions")
 	}
 	names := map[string]bool{}
-	var items []map[string]json.RawMessage
-	if err := json.Unmarshal(list, &items); err == nil {
-		for _, it := range items {
-			var name string
-			if err := json.Unmarshal(it["name"], &name); err != nil || name == "" {
-				return nil, errors.New("действие без имени в cream actions")
-			}
-			names[name] = true
+	for _, it := range result.Actions {
+		var name string
+		if it == nil || json.Unmarshal(it["name"], &name) != nil || name == "" {
+			return nil, errors.New("действие без имени в cream actions")
 		}
-		return names, nil
+		names[name] = true
 	}
-	var byName map[string]json.RawMessage
-	if err := json.Unmarshal(list, &byName); err == nil && byName != nil {
-		for name := range byName {
-			names[name] = true
-		}
-		return names, nil
-	}
-	return nil, errors.New("неизвестная форма result cream actions")
+	return names, nil
 }

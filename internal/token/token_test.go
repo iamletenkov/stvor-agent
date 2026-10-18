@@ -3,9 +3,11 @@ package token
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/iamletenkov/stvor-agent/internal/atomicfile"
@@ -168,6 +170,41 @@ func TestReadSymlink(t *testing.T) {
 	assertNoSecret(t, err)
 }
 
+// deniedFS answers like the real file system to a user who is not root: the
+// directory 0700 of root is closed, open and lstat give EACCES.
+type deniedFS struct {
+	rootFS
+	lstatOnly bool
+}
+
+func (d deniedFS) ReadNoFollow(path string, limit int64) ([]byte, atomicfile.Info, error) {
+	if d.lstatOnly {
+		return d.rootFS.ReadNoFollow(path, limit)
+	}
+	return nil, atomicfile.Info{}, &fs.PathError{Op: "open", Path: path, Err: syscall.EACCES}
+}
+
+func (d deniedFS) Lstat(path string) (atomicfile.Info, error) {
+	return atomicfile.Info{}, &fs.PathError{Op: "lstat", Path: path, Err: syscall.EACCES}
+}
+
+// No access (not root) is its own class, not a broken file.
+func TestReadNoAccess(t *testing.T) {
+	t.Parallel()
+	for _, lstatOnly := range []bool{false, true} {
+		path := setup(t)
+		writeRaw(t, path, good(), 0o600)
+		_, err := Read(deniedFS{lstatOnly: lstatOnly}, path)
+		if !errors.Is(err, ErrNoAccess) {
+			t.Fatalf("lstatOnly=%v: err = %v, want ErrNoAccess", lstatOnly, err)
+		}
+		if got := Kind(err); got != "no_access" {
+			t.Errorf("lstatOnly=%v: Kind = %q, want no_access", lstatOnly, got)
+		}
+		assertNoSecret(t, err)
+	}
+}
+
 func TestKind(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -179,6 +216,7 @@ func TestKind(t *testing.T) {
 		{fmt.Errorf("x: %w", ErrBadMode), "bad_mode"},
 		{fmt.Errorf("x: %w", ErrBadOwner), "bad_owner"},
 		{fmt.Errorf("x: %w", ErrCorrupt), "corrupt"},
+		{fmt.Errorf("x: %w", ErrNoAccess), "no_access"},
 		{errors.New("other"), "corrupt"},
 	}
 	for _, tc := range tests {

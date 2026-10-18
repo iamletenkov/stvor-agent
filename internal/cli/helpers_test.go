@@ -41,13 +41,18 @@ type rootFS struct {
 	// fileUID is reported for files read with ReadNoFollow.
 	fileUID uint32
 	reads   map[string]int
+	// denied answers like to a user who is not root: EACCES.
+	denied bool
 }
 
 func (r *rootFS) ReadNoFollow(path string, limit int64) ([]byte, atomicfile.Info, error) {
 	r.mu.Lock()
 	r.reads[path]++
-	uid := r.fileUID
+	uid, denied := r.fileUID, r.denied
 	r.mu.Unlock()
+	if denied {
+		return nil, atomicfile.Info{}, &os.PathError{Op: "open", Path: path, Err: syscall.EACCES}
+	}
 	data, info, err := r.OS.ReadNoFollow(path, limit)
 	info.UID = uid
 	return data, info, err

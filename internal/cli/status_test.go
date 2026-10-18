@@ -83,6 +83,37 @@ func TestStatusToken(t *testing.T) {
 	}
 }
 
+// Not root: the token file is closed — status says root is needed, does not
+// claim enabled (null) and is not 0.
+func TestStatusNoAccess(t *testing.T) {
+	t.Parallel()
+	e := newEnv(t)
+	e.writeToken()
+	e.fs.denied = true
+	code, stdout, stderr := e.run("", "status", "--json")
+	if code != 1 {
+		t.Errorf("exit code = %d, want 1", code)
+	}
+	var got struct {
+		Token   string `json:"token"`
+		Enabled *bool  `json:"enabled"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &got); err != nil {
+		t.Fatalf("stdout is not JSON: %v\n%s", err, stdout)
+	}
+	if got.Token != "no_access" || got.Enabled != nil {
+		t.Errorf("token/enabled = %q/%v, want no_access/null", got.Token, got.Enabled)
+	}
+	if !strings.Contains(stderr, "нужен root") {
+		t.Errorf("stderr = %q, want the reason «нужен root»", stderr)
+	}
+	code, stdout, _ = e.run("", "status")
+	if code != 1 || !strings.Contains(stdout, "неизвестно") || strings.Contains(stdout, "включён:  нет") {
+		t.Errorf("human status (code %d):\n%s", code, stdout)
+	}
+	e.assertNoToken(stdout, stderr)
+}
+
 func TestStatusDetails(t *testing.T) {
 	t.Parallel()
 	type out struct {
