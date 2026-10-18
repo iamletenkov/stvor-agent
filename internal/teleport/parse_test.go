@@ -178,14 +178,15 @@ func TestParseActions(t *testing.T) {
 		want []string
 		bad  bool
 	}{
-		{name: "sample 4.x", in: read("actions-teleport.json"), want: []string{"join", "managed-status", "set-managed"}},
+		{name: "sample 4.x", in: read("actions-teleport.json"), want: []string{"join", "managed-status", "set-managed", "status"}},
 		{name: "sample 3.x", in: read("actions-teleport-3x.json"), want: []string{"join", "status"}},
-		{name: "actions as map", in: `{"ok":true,"result":{"actions":{"managed-status":{},"set-managed":{"x":1}}}}`,
-			want: []string{"managed-status", "set-managed"}},
-		{name: "result as array", in: `{"ok":true,"result":[{"name":"set-managed"},{"name":"managed-status","new":[1]}]}`,
-			want: []string{"managed-status", "set-managed"}},
+		// Only the golden form of cream T15: other forms are "unknown", never "missing".
+		{name: "actions as map", in: `{"ok":true,"result":{"actions":{"managed-status":{},"set-managed":{"x":1}}}}`, bad: true},
+		{name: "result as array", in: `{"ok":true,"result":[{"name":"set-managed"},{"name":"managed-status","new":[1]}]}`, bad: true},
+		{name: "actions null", in: `{"ok":true,"result":{"actions":null}}`, bad: true},
+		{name: "item not object", in: `{"ok":true,"result":{"actions":["managed-status"]}}`, bad: true},
 		{name: "extra fields", in: `{"cream":"1.2.0","command":"actions","ok":true,"future":{"a":1},` +
-			`"result":{"extension":"teleport","more":true,"actions":[{"name":"managed-status","extra":null}]},"warnings":[{"code":"x"}],"error":null}`,
+			`"result":{"ext":"teleport","more":true,"actions":[{"name":"managed-status","extra":null}]},"warnings":[{"code":"x"}],"error":null}`,
 			want: []string{"managed-status"}},
 		{name: "empty list", in: `{"ok":true,"result":{"actions":[]}}`, want: []string{}},
 		{name: "not json", in: `teleport: join, status`, bad: true},
