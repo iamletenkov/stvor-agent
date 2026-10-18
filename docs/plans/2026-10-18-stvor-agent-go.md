@@ -13,7 +13,7 @@
 ## Progress Tracker
 Волна A — SA, не зависит от cream:
 - [x] Task 1: Go-каркас SA, общие интерфейсы и типы (go.mod, Makefile, main.go)
-- [ ] Task 2: `internal/portal` — клиент `/robot-api/v1/labels` и строгий разбор тела
+- [x] Task 2: `internal/portal` — клиент `/robot-api/v1/labels` и строгий разбор тела
 - [ ] Task 3: `internal/token`, `internal/state`, `internal/atomicfile`
 - [ ] Task 4: `internal/teleport` — exec-адаптер `cream run teleport …` на поддельном cream, файлы-образцы контракта
 - [ ] Task 5: `internal/reconcile` — один тик
