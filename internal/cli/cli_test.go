@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestRun(t *testing.T) {
+func TestRunDispatch(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name       string
@@ -28,29 +28,29 @@ func TestRun(t *testing.T) {
 		{name: "help flag", args: []string{"--help"}, version: "4.0.0", wantCode: 0, wantStdout: "usage: stvor-agent"},
 		{name: "no args", args: nil, version: "4.0.0", wantCode: 2, wantStderr: "usage: stvor-agent"},
 		{name: "unknown subcommand", args: []string{"frobnicate"}, version: "4.0.0", wantCode: 2, wantStderr: `unknown command "frobnicate"`},
-		{name: "known but not implemented", args: []string{"sync"}, version: "4.0.0", wantCode: 2, wantStderr: `"sync" is not implemented`},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			var stdout, stderr bytes.Buffer
-			code := run(tc.args, tc.version, strings.NewReader(""), &stdout, &stderr)
+			e := newEnv(t)
+			e.app.Version = tc.version
+			code, stdout, stderr := e.run("", tc.args...)
 			if code != tc.wantCode {
 				t.Errorf("exit code = %d, want %d", code, tc.wantCode)
 			}
 			switch {
-			case tc.wantExact && stdout.String() != tc.wantStdout:
-				t.Errorf("stdout = %q, want %q", stdout.String(), tc.wantStdout)
-			case !strings.Contains(stdout.String(), tc.wantStdout):
-				t.Errorf("stdout = %q, want it to contain %q", stdout.String(), tc.wantStdout)
-			case tc.wantStdout == "" && stdout.Len() != 0:
-				t.Errorf("stdout = %q, want empty", stdout.String())
+			case tc.wantExact && stdout != tc.wantStdout:
+				t.Errorf("stdout = %q, want %q", stdout, tc.wantStdout)
+			case !strings.Contains(stdout, tc.wantStdout):
+				t.Errorf("stdout = %q, want it to contain %q", stdout, tc.wantStdout)
+			case tc.wantStdout == "" && stdout != "":
+				t.Errorf("stdout = %q, want empty", stdout)
 			}
-			if !strings.Contains(stderr.String(), tc.wantStderr) {
-				t.Errorf("stderr = %q, want it to contain %q", stderr.String(), tc.wantStderr)
+			if !strings.Contains(stderr, tc.wantStderr) {
+				t.Errorf("stderr = %q, want it to contain %q", stderr, tc.wantStderr)
 			}
-			if tc.wantStderr == "" && stderr.Len() != 0 {
-				t.Errorf("stderr = %q, want empty", stderr.String())
+			if tc.wantStderr == "" && stderr != "" {
+				t.Errorf("stderr = %q, want empty", stderr)
 			}
 		})
 	}
@@ -74,8 +74,97 @@ func (failingWriter) Write([]byte) (int, error) { return 0, errors.New("closed p
 
 func TestRunStdoutWriteError(t *testing.T) {
 	t.Parallel()
+	e := newEnv(t)
 	var stderr bytes.Buffer
-	if code := run([]string{"version", "--short"}, "4.0.0", strings.NewReader(""), failingWriter{}, &stderr); code != 1 {
+	if code := e.app.Run([]string{"version", "--short"}, strings.NewReader(""), failingWriter{}, &stderr); code != 1 {
 		t.Errorf("exit code = %d, want 1", code)
+	}
+}
+
+// Usage errors are 2 for every command, before anything is touched.
+func TestUsageErrors(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name       string
+		args       []string
+		wantStderr string
+	}{
+		{"run takes no args", []string{"run", "x"}, "run"},
+		{"enable without URL", []string{"enable"}, "URL"},
+		{"enable repeated URL", []string{"enable", "URL=" + testURL, "URL=" + testURL}, "повтор"},
+		{"enable unknown key", []string{"enable", "URL=" + testURL, "token=x"}, `"token"`},
+		{"enable not KEY=VALUE", []string{"enable", testURL}, "KEY=VALUE"},
+		{"enable lower-case url key", []string{"enable", "url=" + testURL}, `"url"`},
+		{"disable takes no args", []string{"disable", "--now"}, "disable"},
+		{"sync takes no args", []string{"sync", "now"}, "sync"},
+		{"apply without space", []string{"apply", "env=prod"}, "space"},
+		{"apply repeated env", []string{"apply", "env=prod", "env=dev", "space=sp-1"}, "повтор"},
+		{"apply unknown key", []string{"apply", "env=prod", "space=sp-1", "cluster=x"}, `"cluster"`},
+		{"apply space out of alphabet", []string{"apply", "env=prod", "space=SP_1"}, "space"},
+		{"apply env empty", []string{"apply", "env=", "space=sp-1"}, "env"},
+		{"apply env starts with dash", []string{"apply", "env=-prod", "space=sp-1"}, "env"},
+		{"apply env too long", []string{"apply", "env=" + strings.Repeat("a", 64), "space=sp-1"}, "env"},
+		{"status unknown flag", []string{"status", "--yaml"}, `"--yaml"`},
+		{"status extra arg", []string{"status", "--json", "x"}, "status"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			e := newEnv(t)
+			code, stdout, stderr := e.run(testToken+"\n", tc.args...)
+			if code != 2 {
+				t.Errorf("exit code = %d, want 2 (stderr %q)", code, stderr)
+			}
+			if !strings.Contains(stderr, tc.wantStderr) {
+				t.Errorf("stderr = %q, want it to contain %q", stderr, tc.wantStderr)
+			}
+			if exists(e.app.TokenPath) {
+				t.Error("a usage error wrote the token file")
+			}
+			if len(e.sys.Calls()) != 0 || len(e.tp.SetCalls()) != 0 || e.portal.calls() != 0 {
+				t.Errorf("a usage error touched the machine: systemctl %q, set-managed %v, portal %d",
+					e.sys.Calls(), e.tp.SetCalls(), e.portal.calls())
+			}
+			e.assertNoToken(stdout, stderr)
+		})
+	}
+}
+
+// Everything except version, help and status needs root (spec §8).
+func TestRootRequired(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		args     []string
+		wantCode int
+	}{
+		{[]string{"run"}, 1},
+		{[]string{"enable", "URL=" + testURL}, 1},
+		{[]string{"disable"}, 1},
+		{[]string{"sync"}, 1},
+		{[]string{"apply", "env=prod", "space=sp-1"}, 1},
+		{[]string{"status", "--json"}, 0},
+		{[]string{"version", "--label"}, 0},
+		{[]string{"version"}, 0},
+		{[]string{"help"}, 0},
+	}
+	for _, tc := range tests {
+		t.Run(strings.Join(tc.args, " "), func(t *testing.T) {
+			t.Parallel()
+			e := newEnv(t)
+			e.uid = 1000
+			e.writeToken()
+			code, _, stderr := e.run(testToken+"\n", tc.args...)
+			if code != tc.wantCode {
+				t.Errorf("exit code = %d, want %d (stderr %q)", code, tc.wantCode, stderr)
+			}
+			if tc.wantCode == 1 {
+				if !strings.Contains(stderr, "root") {
+					t.Errorf("stderr = %q, want the reason (root)", stderr)
+				}
+				if len(e.sys.Calls()) != 0 || len(e.tp.SetCalls()) != 0 || e.portal.calls() != 0 {
+					t.Error("a non-root call touched the machine")
+				}
+			}
+		})
 	}
 }

@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "version": "4.0.0",
+  "service": "active",
+  "enabled": true,
+  "url": "https://stvor.example/robot-api/v1/labels",
+  "token": "ok",
+  "expected": {
+    "env": "prod",
+    "space": "sp-1",
+    "revision": "0123456789abcdef"
+  },
+  "applied_revision": "0123456789abcdef",
+  "in_effect": true,
+  "teleport": {
+    "managed": {
+      "env": "prod",
+      "space": "sp-1"
+    },
+    "pending": false,
+    "joined": true,
+    "active": true
+  },
+  "restart": {
+    "attempts": 0,
+    "paused_until": null
+  },
+  "last_poll": {
+    "at": "2026-10-18T10:00:00Z",
+    "outcome": "not_modified",
+    "http_status": 304
+  }
+}
