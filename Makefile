@@ -55,10 +55,14 @@ test: cache ## go test -race ./...
 fmt: cache ## gofmt -w по всему модулю
 	$(GO) gofmt -w .
 
-lint: cache ## gofmt -l, go vet, golangci-lint
+# Карта docs/test-map.md сверяется со списком Go-тестов (go test -list) —
+# tools/check-test-map.sh: имена из карты существуют, пустых строк нет.
+lint: cache ## gofmt -l, go vet, golangci-lint, сверка docs/test-map.md с Go-тестами
 	@out="$$($(GO) gofmt -l .)"; if [ -n "$$out" ]; then echo "gofmt: не отформатированы (make fmt):"; echo "$$out"; exit 1; fi
 	$(GO) go vet ./...
 	$(DOCKER_RUN) $(GOLANGCI_IMAGE) golangci-lint run ./...
+	$(GO) go test -list . ./... > .cache/go-test-list.txt
+	tools/check-test-map.sh .cache/go-test-list.txt
 
 legacy-check: ## 3.x: shellcheck и tests/test-*.sh (tools/check.sh)
 	tools/check.sh
