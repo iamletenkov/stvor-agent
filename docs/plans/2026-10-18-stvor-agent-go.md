@@ -23,7 +23,7 @@
 - [x] Task 9: `docs/test-map.md` — перенос проверок `tests/test-labels.sh`, доводка недостающих Go-тестов
 
 Волна B — после релиза cream `v1.0.0`:
-- [ ] Task 10: CE — инструменты проверки для `cream/v1` (`cream validate`, `check.sh`, Makefile)
+- [x] Task 10: CE — инструменты проверки для `cream/v1` (`cream validate`, `check.sh`, Makefile)
 - [ ] Task 11: CE — расширение `teleport`: перенос join/render/apps/os_logins/leave/scrub-token, хуки, юниты, `test-join.sh`
 - [ ] Task 12: CE — `teleport`: управляемые и командные метки, `set-managed`, `managed-status`, `test-managed.sh`
 - [ ] Task 13: CE — обёртка `stvor-agent` (пины по архитектурам, drop-in метки `stvor_agent`, `test-stvor-agent.sh`)
