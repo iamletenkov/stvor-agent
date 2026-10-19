@@ -24,7 +24,7 @@
 
 Волна B — после релиза cream `v1.0.0`:
 - [x] Task 10: CE — инструменты проверки для `cream/v1` (`cream validate`, `check.sh`, Makefile)
-- [ ] Task 11: CE — расширение `teleport`: перенос join/render/apps/os_logins/leave/scrub-token, хуки, юниты, `test-join.sh`
+- [x] Task 11: CE — расширение `teleport`: перенос join/render/apps/os_logins/leave/scrub-token, хуки, юниты, `test-join.sh`
 - [ ] Task 12: CE — `teleport`: управляемые и командные метки, `set-managed`, `managed-status`, `test-managed.sh`
 - [x] Task 13: CE — обёртка `stvor-agent` (пины по архитектурам, drop-in метки `stvor_agent`, `test-stvor-agent.sh`)
 - [ ] Task 14: CE — путь `apps.d` у `code-server`/`selkies`, удаление `teleport-agent`, `agent-bump` на `stvor-agent`
