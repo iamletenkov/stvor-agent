@@ -213,6 +213,7 @@ Go на хосте не нужен: всё идёт в контейнере `gol
 make lint              # gofmt, go vet, golangci-lint, docs/test-map.md, shellcheck, actionlint, образцы контракта
 make test              # go test -race ./...
 make test-integration  # адаптер teleport против настоящего cream в debian:12 (пин test/integration/cream-pin.env)
+make e2e               # сквозной тест в debian:12 с systemd (каталог cream-extensions по пину test/e2e/catalog-pin.env)
 make ci                # всё, что гоняет CI (под общим замком тяжёлых прогонов)
 make deb VERSION=4.0.0 # dist/stvor-agent_<версия>_{amd64,arm64}.deb и dist/SHA256SUMS (ARCH=amd64 — один)
 make repro-check       # две сборки .deb с пустыми кешами — равные sha256

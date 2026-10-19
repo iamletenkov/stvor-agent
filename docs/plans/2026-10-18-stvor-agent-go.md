@@ -35,7 +35,7 @@
 - [x] Task 17: SA — CI и release-please 4.0.0, dispatch бампа пина в CE
 - [x] Task 18: SA — документация (README, SECURITY, portal-labels-api, AGENTS/CLAUDE, индекс, STATUS)
 - [x] Task 19: SA — удаление bash-кода, юнитов, тестов и инструментов 3.x; сверка файлов-образцов с CE
-- [ ] Task 20: SA — сквозной тест в контейнере Debian 12 с systemd (спека §15.3)
+- [x] Task 20: SA — сквозной тест в контейнере Debian 12 с systemd (спека §15.3)
 - [ ] Task 21: выпуск SA 4.0.0 и пин в обёртке CE (внешнее действие — с «да» владельца)
 - [ ] Task 22: приёмка на тестовой ВМ `pve-robot-1` (спека §16)
 - [ ] Task 23: Финальная интеграция + `make ci`
