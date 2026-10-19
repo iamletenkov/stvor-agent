@@ -4,6 +4,17 @@
 release-please из Conventional Commits; 3.0.1 и старше написаны вручную в
 формате [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/).
 
+## [4.0.0](https://github.com/iamletenkov/stvor-agent/compare/v3.1.0...v4.0.0) (2026-10-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* пакет переименован в stvor-agent, ставится через cream; bash-агент bisquite-teleport-agent 3.x выпускается из ветки fix/3.1.1-version-check.
+
+### Добавлено
+
+* stvor-agent 4.0 — служба портала на Go ([93df186](https://github.com/iamletenkov/stvor-agent/commit/93df1863e0cd8f703a32ab0f8325ddfa26b86eb9))
+
 ## [3.1.0](https://github.com/iamletenkov/bisquite-teleport-agent/compare/v3.0.1...v3.1.0) (2026-10-14)
 
 
