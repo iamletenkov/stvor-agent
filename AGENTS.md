@@ -8,9 +8,8 @@
 **Курс выполнен:** агент переписан на Go (спека [docs/specs/2026-10-18-stvor-agent-go.md](docs/specs/2026-10-18-stvor-agent-go.md),
 план [docs/plans/2026-10-18-stvor-agent-go.md](docs/plans/2026-10-18-stvor-agent-go.md)), регистрация в Teleport уехала в
 расширение `teleport`. Контракт с машинами 4.x — имена пакета, бинаря, юнита, пути `/etc/stvor-agent`,
-`/var/lib/stvor-agent`, CLI и `status --json` — меняется только через ADR. Bash-агент 3.x (`src/`, `lib/`, `debian/`,
-`tests/`, `tools/check.sh`, `tools/build-deb.sh`, цели `legacy-*`) ещё лежит в дереве и **удаляется задачей 19 плана** —
-новый код туда не пишется.
+`/var/lib/stvor-agent`, CLI и `status --json` — меняется только через ADR. Bash-агент 3.x удалён из дерева (Task 19
+плана); его код — в тегах `v3.*`, исправления 3.1.x выпускаются из своей ветки, не из `main`.
 
 ## Место в экосистеме
 - **Stvor** — приватный портал (identity & access hub); агент ходит в его robot-API ([docs/portal-labels-api.md](docs/portal-labels-api.md)).
@@ -34,11 +33,10 @@ internal/token/, internal/state/, internal/atomicfile/ — файл токена
 internal/systemd/  — вызовы systemctl; internal/version/ — версия из ldflags
 packaging/         — юнит stvor-agent.service (+ unit_test.go), nfpm.yaml, postinst/prerm/postrm, copyright
 test/integration/  — адаптер против настоящего cream в debian:12 (`make test-integration`)
-tools/             — check-test-map, check-deb, check-deb-live, repro-check; 3.x: check.sh, build-deb.sh
+tools/             — check-test-map, check-contract-fixtures (+ пин contract-fixtures.sha256), check-deb, check-deb-live, repro-check
 docs/              — README.md (индекс), STATUS.md, portal-labels-api.md, test-map.md, adr/, specs/, plans/, research/
-src/, lib/, debian/, tests/ — bash-агент 3.x, удаляется задачей 19
 .claude/           — агенты, skills, правила, хуки Claude Code
-Makefile           — публичный API (`make help`): lint, test, build-all, deb, repro-check, vuln, test-integration, ci
+Makefile           — публичный API (`make help`): lint, actionlint, contract-fixtures, test, build-all, deb, repro-check, vuln, test-integration, ci
 ```
 
 ## Как работать

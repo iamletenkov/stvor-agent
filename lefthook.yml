@@ -23,6 +23,23 @@ pre-commit:
           docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:stable -x -S style $files
         fi
 
+    # gofmt -l по staged *.go: тот же образ Go, что в Makefile (GO_IMAGE).
+    gofmt:
+      glob: "*.go"
+      run: |
+        files=""
+        for f in {staged_files}; do [ -f "$f" ] && files="$files $f"; done
+        [ -z "$files" ] && exit 0
+        if command -v gofmt >/dev/null 2>&1; then
+          out="$(gofmt -l $files)"
+        else
+          out="$(docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/src" -w /src golang:1.26.9 gofmt -l $files)"
+        fi
+        [ -z "$out" ] && exit 0
+        echo "gofmt: не отформатированы (make fmt):"
+        echo "$out"
+        exit 1
+
     gitleaks:
       run: |
         if command -v gitleaks >/dev/null 2>&1; then

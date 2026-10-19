@@ -5,7 +5,6 @@
       "Bash(make help)",
       "Bash(make lint)",
       "Bash(make test)",
-      "Bash(make check)",
       "Bash(make deb)",
       "Bash(make ci)",
       "Bash(git status:*)",

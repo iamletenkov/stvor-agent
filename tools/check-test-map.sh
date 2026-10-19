@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
-# Сверка docs/test-map.md (карта переноса проверок tests/test-labels.sh 3.x)
-# с Go-тестами и с самим bash-тестом:
+# Сверка docs/test-map.md (итоговая карта переноса проверок tests/test-labels.sh
+# 3.x; сам скрипт удалён в Task 19, номера его строк — справка) с Go-тестами:
 #   - у каждой строки таблицы есть итог (Go, T, Go+T, снято) и непустое «куда»;
 #   - каждое имя `pkg.TestName` есть в выводе `go test -list . ./...`,
 #     подтест `pkg.TestName/имя` — строкой "имя" в .go-файлах пакета;
 #   - итог Go/Go+T несёт хотя бы одно имя Go-теста, T/Go+T — тест расширения
-#     (test-managed.sh или test-join.sh), «снято» — причину («снято: …»);
-#   - пока tests/test-labels.sh в дереве: номера его строк с проверками
-#     (check, check_not, eq) и номера строк таблицы совпадают как множества.
+#     (test-managed.sh или test-join.sh), «снято» — причину («снято: …»).
 #
 #   tools/check-test-map.sh <вывод go test -list . ./...>
 #
@@ -16,7 +14,6 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(dirname "$HERE")"
 MAP="${TEST_MAP:-$REPO/docs/test-map.md}"
-SRC="${TEST_LABELS:-$REPO/tests/test-labels.sh}"
 LIST="${1:?usage: tools/check-test-map.sh <go test -list output>}"
 
 rc=0
@@ -43,7 +40,6 @@ pkg_dir(){
     return 1
 }
 
-declare -A seen_lines=()
 rows=0; n_go=0; n_t=0; n_both=0; n_gone=0; want_no=1
 while IFS= read -r row; do
     rows=$((rows + 1))
@@ -55,7 +51,6 @@ while IFS= read -r row; do
     [[ "$no" == "$want_no" ]] || fail "строка №$no: ждали №$want_no (номера по порядку)"
     want_no=$((no + 1))
     [[ "$line" =~ ^[0-9]+$ ]] || fail "№$no: «Стр.» не число: [$line]"
-    seen_lines["$line"]=1
     [[ -n "$what" ]] || fail "№$no: пустая «Проверка»"
     [[ -n "$where" ]] || fail "№$no: пустое «Куда»"
 
@@ -84,18 +79,6 @@ while IFS= read -r row; do
 done < <(grep -E '^\| *[0-9]+ *\|' "$MAP")
 
 (( rows > 0 )) || fail "в $MAP нет строк таблицы"
-
-if [[ -f "$SRC" ]]; then
-    while IFS= read -r l; do
-        [[ -n "${seen_lines[$l]:-}" ]] || fail "строка $l $(basename "$SRC") с проверкой не попала в карту"
-        unset 'seen_lines[$l]'
-    done < <(grep -nE '^[[:space:]]*(check|check_not|eq) ' "$SRC" | cut -d: -f1)
-    for l in "${!seen_lines[@]}"; do
-        fail "в карте строка $l, а в $(basename "$SRC") на ней нет проверки"
-    done
-else
-    echo "test-map: $(basename "$SRC") нет в дереве — сверка номеров строк пропущена"
-fi
 
 echo "test-map: строк $rows — Go $n_go, Go+T $n_both, T $n_t, снято $n_gone"
 exit "$rc"

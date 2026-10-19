@@ -34,7 +34,7 @@
 - [x] Task 16: SA — упаковка nfpm `.deb` amd64/arm64, сопровождающие скрипты, проверка воспроизводимости
 - [x] Task 17: SA — CI и release-please 4.0.0, dispatch бампа пина в CE
 - [x] Task 18: SA — документация (README, SECURITY, portal-labels-api, AGENTS/CLAUDE, индекс, STATUS)
-- [ ] Task 19: SA — удаление bash-кода, юнитов, тестов и инструментов 3.x; сверка файлов-образцов с CE
+- [x] Task 19: SA — удаление bash-кода, юнитов, тестов и инструментов 3.x; сверка файлов-образцов с CE
 - [ ] Task 20: SA — сквозной тест в контейнере Debian 12 с systemd (спека §15.3)
 - [ ] Task 21: выпуск SA 4.0.0 и пин в обёртке CE (внешнее действие — с «да» владельца)
 - [ ] Task 22: приёмка на тестовой ВМ `pve-robot-1` (спека §16)
@@ -449,7 +449,20 @@ cream 1.0.0).
   `tools/contract-fixtures.sha256`.
 - **Тесты первыми:** `check-contract-fixtures.sh` красный при изменённом байте образца или расхождении с соседней
   копией, skip без копии, зелёный на пине (вывод в отчёте).
-- **Готово:** `make ci`; `git grep -n 'bisquite'` даёт только CHANGELOG/историю и `portal-labels-api.md`.
+- **Готово:** `make ci`; `git grep -n 'bisquite'` даёт только CHANGELOG/историю и `portal-labels-api.md`
+  (ослаблено рулингом 10).
+- **Исполнено:** удалены `src/`, `lib/` (с `bisquite-conf`), `debian/`, `tests/test-*.sh`, `tools/check.sh`,
+  `tools/build-deb.sh`, `VERSION`; цели `legacy-*` и шаги CI 3.x (shellcheck/lintian, `dist/legacy/`) сняты, отдельный
+  шаг actionlint в CI заменён целью `make actionlint` внутри `make lint`. Без `VERSION=` Makefile собирает
+  `0.0.0-dev` (не `dev`: версия `.deb` обязана начинаться с цифры, а `check-deb` сверяет её с `version --short`);
+  без ldflags бинарь по-прежнему `dev`. `make contract-fixtures` (в `make lint`) — пин `9c01d6b8…` равен пину CE;
+  без копии CE или без образцов в ней (main CE до слияния пилота) — локально пропуск, при `CI=true|1` — ошибка.
+  `tools/check-test-map.sh` — сверка номеров строк снята вместе с `tests/test-labels.sh` (карта итоговая, номера —
+  по тегу `v3.1.0`). `check-deb.sh` — лишний grep следов 3.x снят: точный список файлов пакета их и так не пускает.
+  shellcheck в `make lint` — с `-x` и по `tools/*.sh`, `test/integration/*.sh`. lefthook — gofmt staged `*.go`.
+  `NOTICE` — под `stvor-agent` (строка о `lib/bisquite-conf` ушла). Единственное упоминание в коде —
+  `packaging/copyright`: `Required Notice` лицензии, побайтная копия `LICENSE` (её сверяет `check-deb.sh`); текст
+  лицензии меняет только владелец.
 
 ### Task 20: SA — сквозной тест в контейнере с systemd
 - **Репозиторий:** SA. **Зависит:** 16, 19; CE 12, 13 (снимок каталога пилотной ветки). **Волна:** C3 (один,
@@ -526,6 +539,11 @@ cream 1.0.0).
 9. **Р9-SA: `TimeoutStopSec=120`** (после Task 15): начатый `set-managed` идёт до 90 с, а по его тайм-ауту адаптер
    ждёт ещё до 15 с между SIGTERM и SIGKILL группе `cream` — 90 с юнита не хватало. Юнит, его тест и спека §5.8,
    §9.1 правятся вместе; тайм-аут одного вызова `systemctl` — 150 с (остановка 120 с плюс старт).
+10. **Упоминания 3.x после Task 19** (рулинг контроллера, ослабляет «Готово» Task 19): допустимы в `README.md`,
+   `SECURITY.md`, `AGENTS.md`, `CHANGELOG.md`, `docs/portal-labels-api.md`, `docs/research/**`, `docs/specs/**`,
+   `docs/plans/**`, `docs/test-map.md`; в коде (`cmd/`, `internal/`, `packaging/`, `tools/`, `test/`, `Makefile`,
+   `.github/`) — ни одного (`git grep -n -i bisquite -- cmd internal packaging tools test Makefile .github`), кроме
+   текста лицензии в `packaging/copyright` (копия `LICENSE`, меняет только владелец).
 
 ## Риски исполнения
 | # | Риск | Что делаем |
