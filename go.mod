@@ -1,3 +1,3 @@
 module github.com/iamletenkov/stvor-agent
 
-go 1.25
+go 1.26

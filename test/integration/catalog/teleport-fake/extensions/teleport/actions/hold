@@ -1,0 +1,13 @@
+#!/bin/sh
+# Держит lock/teleport (exclusive): пишет hold.started и ждёт hold.release (≤ 100 с).
+set -eu
+d=/var/lib/teleport-fake
+mkdir -p "$d"
+rm -f "$d/hold.release"
+: > "$d/hold.started"
+i=0
+while [ ! -f "$d/hold.release" ] && [ "$i" -lt 1000 ]; do
+    sleep 0.1
+    i=$((i + 1))
+done
+rm -f "$d/hold.started"

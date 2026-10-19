@@ -28,7 +28,7 @@
 - [ ] Task 12: CE — `teleport`: управляемые и командные метки, `set-managed`, `managed-status`, `test-managed.sh`
 - [x] Task 13: CE — обёртка `stvor-agent` (пины по архитектурам, drop-in метки `stvor_agent`, `test-stvor-agent.sh`)
 - [ ] Task 14: CE — путь `apps.d` у `code-server`/`selkies`, удаление `teleport-agent`, `agent-bump` на `stvor-agent`
-- [ ] Task 15: SA — интеграционный тест адаптера с настоящим `cream` и фиктивным расширением
+- [x] Task 15: SA — интеграционный тест адаптера с настоящим `cream` и фиктивным расширением
 
 Волна C — упаковка, выпуск, чистка, приёмка:
 - [ ] Task 16: SA — упаковка nfpm `.deb` amd64/arm64, сопровождающие скрипты, проверка воспроизводимости

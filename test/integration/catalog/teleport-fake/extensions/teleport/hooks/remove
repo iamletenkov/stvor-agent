@@ -1,0 +1,4 @@
+#!/bin/sh
+# Фиктивный хук remove: состояния у расширения нет, всё лежит в /var/lib/teleport-fake.
+set -eu
+exit 0

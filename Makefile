@@ -4,7 +4,7 @@
 # Пока в репозитории живёт bash-агент 3.x (до его удаления по плану), его проверки
 # и сборка пакета — цели legacy-*, и make ci гоняет Go и 3.x вместе.
 
-GO_IMAGE       ?= golang:1.25.11
+GO_IMAGE       ?= golang:1.26.9
 GOLANGCI_IMAGE ?= golangci/golangci-lint:v2.14.0
 MODULE         := github.com/iamletenkov/stvor-agent
 VERSION        ?= $(shell tr -d '[:space:]' < VERSION 2>/dev/null || echo dev)
@@ -27,10 +27,10 @@ DOCKER_RUN = docker run --rm -u $(UID):$(GID) \
 GO = $(DOCKER_RUN) $(GO_IMAGE)
 
 .DEFAULT_GOAL := help
-.PHONY: help cache build build-all test lint fmt legacy-check legacy-deb ci clean
+.PHONY: help cache build build-all test test-integration lint fmt legacy-check legacy-deb ci clean
 
 help: ## список целей
-	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-13s %s\n", $$1, $$2}'
+	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-17s %s\n", $$1, $$2}'
 
 cache:
 	@mkdir -p .cache dist
@@ -56,6 +56,16 @@ build-all: cache ## dist/stvor-agent-linux-{amd64,arm64} (статические
 test: cache ## go test -race ./...
 	$(GO) env CGO_ENABLED=1 go test -race -count=1 ./...
 
+# Адаптер internal/teleport против настоящего cream (план, Task 15): пакет cream по пину
+# test/integration/cream-pin.env (или CREAM_DEB=<путь> с предупреждением) ставится в
+# контейнер debian:12 вместе с фиктивным расширением teleport. Пин пуст и CREAM_DEB не
+# задан — пропуск со строкой, не ошибка. В ci не входит до Task 20.
+test-integration: cache ## адаптер teleport против настоящего cream в контейнере debian:12
+	@deb="$$(test/integration/cream-deb.sh)" || exit 1; [ -n "$$deb" ] || exit 0; \
+	mkdir -p .cache/it; \
+	$(GO) env CGO_ENABLED=0 go test -c -tags integration -o .cache/it/teleport.test ./internal/teleport && \
+	test/integration/run.sh "$$deb" .cache/it/teleport.test
+
 fmt: cache ## gofmt -w по всему модулю
 	$(GO) gofmt -w .
 
@@ -64,6 +74,7 @@ fmt: cache ## gofmt -w по всему модулю
 lint: cache ## gofmt -l, go vet, golangci-lint, сверка docs/test-map.md с Go-тестами
 	@out="$$($(GO) gofmt -l .)"; if [ -n "$$out" ]; then echo "gofmt: не отформатированы (make fmt):"; echo "$$out"; exit 1; fi
 	$(GO) go vet ./...
+	$(GO) go vet -tags integration ./internal/teleport
 	$(DOCKER_RUN) $(GOLANGCI_IMAGE) golangci-lint run ./...
 	$(GO) go test -list . ./... > .cache/go-test-list.txt
 	tools/check-test-map.sh .cache/go-test-list.txt

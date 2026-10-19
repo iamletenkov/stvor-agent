@@ -265,6 +265,11 @@ S вызывает только два действия T и только чер
 | каждый тик, после `set-managed`, `status` | `/usr/bin/cream run teleport managed-status` (`lock: none` — не ждёт долгий `join`) | 15 с | stdout ≤ 64 КиБ, строгий JSON схемы 1 (ниже); код ≠ 0 или не JSON → `tsErr` |
 | метки не действуют | `/usr/bin/cream run --lock-timeout 20s teleport set-managed env=<v> space=<v>` | 90 с (ожидание блокировки ≤ 20 с + restart с подтверждением ≤ 30 с + запас) | код и JSON (ниже) |
 
+По тайм-ауту S шлёт SIGTERM группе процессов `cream` и SIGKILL той же группе через 15 с: действие cream держит в
+своей отдельной группе и убивает её сам по SIGTERM (у него 10 с между своими SIGTERM и SIGKILL), а SIGKILL сразу
+оставил бы действие сиротой (найдено интеграционным тестом с настоящим cream, план Task 15). Собственный тайм-аут
+действия из манифеста cream отдаёт кодом 79.
+
 `stvor-agent disable` T не вызывает: управляемые `env`/`space` остаются (узел не переезжает молча), а метка
 `stvor_agent` пустеет сама, потому что `version --label` без файла токена печатает пустую строку (§4.4).
 
@@ -372,7 +377,7 @@ S проверяет ответ строго (`schema == 1`, ключи и зн�
   `/var/lib/stvor-agent`. Сборка образа (нет systemd) — только ссылка `enable`, ничего не стартует.
 
 ### 9.2 Сборка и выпуск
-- `make` в контейнере `golang:1.25.11` (как в cream): `make lint` (gofmt, `go vet`, golangci-lint), `make test`
+- `make` в контейнере `golang:1.26.9` (как в cream): `make lint` (gofmt, `go vet`, golangci-lint), `make test`
   (`go test -race ./...`), `make build-all` (`CGO_ENABLED=0 go build -trimpath -buildvcs=false
   -ldflags "-s -w -buildid= -X …/version.Version=<v>"`), `make deb` (nfpm), `make ci` (всё + проверка
   воспроизводимости: две сборки подряд дают равные суммы `.deb`).
