@@ -38,7 +38,8 @@ HEAVY           = $(if $(STVOR_AGENT_HEAVY_HELD),,flock $(HEAVY_LOCK) env STVOR_
 SH_FILES       := packaging/postinst packaging/prerm packaging/postrm \
 	tools/check-deb.sh tools/check-deb-live.sh tools/repro-check.sh \
 	tools/check-test-map.sh tools/check-contract-fixtures.sh \
-	test/integration/cream-deb.sh test/integration/run.sh test/integration/inside.sh
+	test/integration/cream-deb.sh test/integration/run.sh test/integration/inside.sh \
+	test/e2e/run.sh test/e2e/inside.sh test/e2e/teleport-fake/teleport
 
 UID := $(shell id -u)
 GID := $(shell id -g)
@@ -56,7 +57,7 @@ GO = $(DOCKER_RUN) $(GO_IMAGE)
 GO_FILES = find . \( -path ./.cache -o -path ./dist -o -path ./.scratchpad -o -path ./.git \) -prune -o -name '*.go' -print
 
 .DEFAULT_GOAL := help
-.PHONY: help cache build build-all test test-integration lint actionlint contract-fixtures fmt deb \
+.PHONY: help cache build build-all test test-integration e2e e2e-unlocked lint actionlint contract-fixtures fmt deb \
 	deb-unlocked repro-check vuln ci ci-unlocked clean
 
 help: ## список целей
@@ -95,6 +96,25 @@ test-integration: cache ## адаптер teleport против настояще
 	mkdir -p .cache/it; \
 	$(GO) env CGO_ENABLED=0 go test -c -tags integration -o .cache/it/teleport.test ./internal/teleport && \
 	test/integration/run.sh "$$deb" .cache/it/teleport.test
+
+# Сквозной тест (план Task 20, спека §15.3): контейнер debian:12 с systemd, cream по пину
+# test/integration/cream-pin.env, снимок каталога cream-extensions по пину
+# test/e2e/catalog-pin.env (CREAM_EXTENSIONS_DIR, по умолчанию ../cream-extensions),
+# teleport с поддельным агентом, .deb stvor-agent из dist/ (версия E2E_VERSION, только amd64)
+# против test/e2e/fakeportal. Под замком: один тяжёлый прогон за раз. Лог —
+# .scratchpad/test-runs/e2e-<время>/. В ci не входит — отдельный job CI.
+E2E_VERSION    ?= 4.0.0
+e2e: ## сквозной тест в контейнере debian:12 с systemd (под замком)
+	$(HEAVY) $(MAKE) --no-print-directory e2e-unlocked
+
+e2e-unlocked: cache
+	@deb="$$(test/integration/cream-deb.sh)" || exit 1; \
+	if [ -z "$$deb" ]; then echo "e2e: пин cream пуст — сквозной тест без cream невозможен"; exit 1; fi; \
+	$(MAKE) --no-print-directory deb-unlocked VERSION=$(E2E_VERSION) ARCH=amd64 ARCHES=amd64 \
+		DEB_LIVE=0 RELEASE_DIR=.cache/e2e && \
+	$(GO) env CGO_ENABLED=0 go build -trimpath -o .cache/e2e/fakeportal ./test/e2e/fakeportal && \
+	test/e2e/run.sh "$$deb" .cache/e2e/stvor-agent_$(E2E_VERSION)_amd64.deb $(E2E_VERSION) \
+		.cache/e2e/fakeportal .scratchpad/test-runs/e2e-$$(date +%Y%m%d-%H%M%S)
 
 fmt: cache ## gofmt -w по всему модулю
 	$(GO) sh -c "$(GO_FILES) | xargs -r gofmt -w"

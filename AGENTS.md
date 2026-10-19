@@ -33,10 +33,11 @@ internal/token/, internal/state/, internal/atomicfile/ — файл токена
 internal/systemd/  — вызовы systemctl; internal/version/ — версия из ldflags
 packaging/         — юнит stvor-agent.service (+ unit_test.go), nfpm.yaml, postinst/prerm/postrm, copyright
 test/integration/  — адаптер против настоящего cream в debian:12 (`make test-integration`)
+test/e2e/          — сквозной тест в debian:12 с systemd: cream, каталог по пину, fakeportal (`make e2e`)
 tools/             — check-test-map, check-contract-fixtures (+ пин contract-fixtures.sha256), check-deb, check-deb-live, repro-check
 docs/              — README.md (индекс), STATUS.md, portal-labels-api.md, test-map.md, adr/, specs/, plans/, research/
 .claude/           — агенты, skills, правила, хуки Claude Code
-Makefile           — публичный API (`make help`): lint, actionlint, contract-fixtures, test, build-all, deb, repro-check, vuln, test-integration, ci
+Makefile           — публичный API (`make help`): lint, actionlint, contract-fixtures, test, build-all, deb, repro-check, vuln, test-integration, e2e, ci
 ```
 
 ## Как работать
