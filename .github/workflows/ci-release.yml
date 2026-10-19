@@ -59,7 +59,7 @@ jobs:
           dir /repo --config /repo/.gitleaks.toml --redact --no-banner -v
 
       # Go-агент 4.x: те же make-цели, что руками (Go в контейнере
-      # golang:1.25.11, линтер закреплён в Makefile). Шаги 3.x ниже остаются,
+      # golang:1.26.9, линтер закреплён в Makefile). Шаги 3.x ниже остаются,
       # пока bash-агент живёт в репозитории.
       - name: Go lint, test, build
         run: make lint test build-all

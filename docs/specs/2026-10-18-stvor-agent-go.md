@@ -372,7 +372,7 @@ S проверяет ответ строго (`schema == 1`, ключи и зн�
   `/var/lib/stvor-agent`. Сборка образа (нет systemd) — только ссылка `enable`, ничего не стартует.
 
 ### 9.2 Сборка и выпуск
-- `make` в контейнере `golang:1.25.11` (как в cream): `make lint` (gofmt, `go vet`, golangci-lint), `make test`
+- `make` в контейнере `golang:1.26.9` (как в cream): `make lint` (gofmt, `go vet`, golangci-lint), `make test`
   (`go test -race ./...`), `make build-all` (`CGO_ENABLED=0 go build -trimpath -buildvcs=false
   -ldflags "-s -w -buildid= -X …/version.Version=<v>"`), `make deb` (nfpm), `make ci` (всё + проверка
   воспроизводимости: две сборки подряд дают равные суммы `.deb`).

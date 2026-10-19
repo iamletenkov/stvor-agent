@@ -4,7 +4,7 @@
 # Пока в репозитории живёт bash-агент 3.x (до его удаления по плану), его проверки
 # и сборка пакета — цели legacy-*, и make ci гоняет Go и 3.x вместе.
 
-GO_IMAGE       ?= golang:1.25.11
+GO_IMAGE       ?= golang:1.26.9
 GOLANGCI_IMAGE ?= golangci/golangci-lint:v2.14.0
 MODULE         := github.com/iamletenkov/stvor-agent
 VERSION        ?= $(shell tr -d '[:space:]' < VERSION 2>/dev/null || echo dev)
