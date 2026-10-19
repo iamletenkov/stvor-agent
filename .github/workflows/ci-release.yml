@@ -1,21 +1,25 @@
 name: CI and Release
 
-# shellcheck, тесты на подменённом корне и сборка .deb — та же точка входа
-# tools/check.sh, что запускают руками. Пакет собирается воспроизводимо:
-# сумма артефакта CI совпадает с суммой локальной сборки того же коммита.
+# Проверки — те же make-цели, что запускают руками: make ci (lint с actionlint
+# и сверкой образцов контракта, test, build-all, deb, repro-check), make vuln,
+# make test-integration, make e2e (на main и вручную). Go, nfpm,
+# линтеры — в контейнерах с закреплёнными образами (Makefile), CI и локальный
+# прогон не расходятся.
 #
-# Выпуск — release-please, как в bisquite: на main после проверок он ведёт
-# PR «release X.Y.Z» (VERSION и CHANGELOG.md); слияние этого PR создаёт тег
-# vX.Y.Z и ОПУБЛИКОВАННЫЙ релиз, после чего job release-artifacts собирает из
-# тега .deb и SHA256SUMS и прикладывает их к релизу, а dispatch-extensions
-# запускает в cream-extensions подъём пина агента. Теги руками не ставят.
+# Выпуск — release-please (release-type: go, конфиг .github/release_please/):
+# на main после зелёных проверок он ведёт PR «release X.Y.Z» (CHANGELOG.md);
+# слияние этого PR создаёт тег vX.Y.Z и опубликованный релиз. Теги руками не
+# ставят. Версия в бинаре и пакете — из тега (ldflags), CI сверяет.
+# Затем release-artifacts собирает из тега оба .deb и SHA256SUMS и прикладывает
+# их к релизу, а dispatch-extensions (если включён переменной
+# EXTENSIONS_BUMP_ENABLED) запускает в cream-extensions подъём пина агента.
 #
-# Повторно собрать и приложить файлы к уже опубликованному релизу — ручной
-# запуск с входом release_tag (Actions → CI and Release → Run workflow).
+# Ручной запуск (Actions → CI and Release → Run workflow): без tag — проверки
+# на выбранной ветке; с tag — ещё и сборка ассетов этого тега (сухой прогон),
+# а с upload=true — загрузка их в опубликованный релиз (--clobber) и dispatch.
 
-# Ветки проверяются на pull_request (результат слияния с main), push — только
-# main: там релиз. push во все ветки вместе с pull_request гонял CI дважды на
-# каждый коммит PR. Ветку без PR — черновым PR или вручную (workflow_dispatch).
+# Ветки проверяются на pull_request, push — только main: там релиз. Ветку без
+# PR — черновым PR или вручную (workflow_dispatch).
 on:
   pull_request:
     branches: [main]
@@ -23,68 +27,165 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
-      release_tag:
-        description: >-
-          Тег уже опубликованного релиза (например, v3.0.1), к которому
-          пересобрать и приложить файлы. Пусто — обычный прогон.
+      tag:
+        description: "Тег vX.Y.Z (4.x и новее): собрать ассеты релиза (пусто — только проверки)"
         required: false
+        default: ""
         type: string
+      upload:
+        description: "Загрузить ассеты в опубликованный релиз тега и запустить подъём пина (иначе сухой прогон)"
+        required: false
+        default: false
+        type: boolean
 
-# По умолчанию — только чтение. Запись получают ровно те job'ы, которым она
-# нужна: release-please (релиз, тег, релиз-PR и его метки) и загрузка файлов.
-permissions:
-  contents: read
+# Права — на уровне job, по минимуму; по умолчанию нет никаких.
+permissions: {}
 
 # Отменять устаревший прогон можно только на PR: на main отмена посреди
 # релизной цепочки оставила бы опубликованный релиз без файлов.
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.ref }}-${{ inputs.tag || 'checks' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
-    name: Check
+    name: Check (make ci)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      # Соседняя копия cream-extensions для сверки файлов-образцов контракта
+      # (tools/check-contract-fixtures.sh, план Task 19). Ветка — переменная
+      # репозитория CE_CONTRACT_REF: до слияния пилота CE в main —
+      # feature/cream-v1-pilot (умолчание), затем main.
+      CREAM_EXTENSIONS_DIR: ${{ github.workspace }}/.cache/cream-extensions
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
-          fetch-depth: 0   # SOURCE_DATE_EPOCH — время последнего коммита
+          fetch-depth: 0   # SOURCE_DATE_EPOCH — время коммита; теги — для проверки release-as
           persist-credentials: false
 
       # Секреты в дереве — тот же gitleaks и тот же .gitleaks.toml, что на
-      # pre-commit; образ закреплён по версии.
+      # pre-commit; образ закреплён по версии. До checkout cream-extensions:
+      # сканируется только этот репозиторий.
       - name: Gitleaks
         run: >-
           docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.30.1
           dir /repo --config /repo/.gitleaks.toml --redact --no-banner -v
 
-      - name: Install tools
-        run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends shellcheck lintian
-
-      - name: shellcheck and tests
-        run: tools/check.sh
-        env:
-          CI: "1"
-
-      - name: Build .deb
+      # release-as в конфиге release-please задаёт номер первого Go-выпуска
+      # (4.0.0; по одним коммитам feat вышло бы 3.2.0). После выхода этой
+      # версии его надо убрать, иначе release-please снова предложит тот же
+      # номер: проверка краснеет, как только тег v<release-as> существует.
+      - name: release-as не пережил свой релиз
         run: |
-          tools/build-deb.sh
-          dpkg-deb --info dist/*.deb
-          dpkg-deb --contents dist/*.deb
+          set -euo pipefail
+          ra="$(jq -r '.packages["."]["release-as"] // empty' .github/release_please/release-please-config.json)"
+          if [ -n "$ra" ] && git rev-parse -q --verify "refs/tags/v$ra" >/dev/null; then
+            echo "::error::тег v$ra уже есть — уберите release-as из .github/release_please/release-please-config.json"
+            exit 1
+          fi
+          echo "release-as: ${ra:-нет}"
 
-      # Сведения, а не ворота: пакет собран dpkg-deb без debhelper.
-      - name: lintian (informational)
-        run: lintian --no-tag-display-limit dist/*.deb || true
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          repository: iamletenkov/cream-extensions
+          ref: ${{ vars.CE_CONTRACT_REF || 'feature/cream-v1-pilot' }}
+          path: .cache/cream-extensions
+          persist-credentials: false
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      # CI=true (по умолчанию в Actions): без копии cream-extensions сверка
+      # образцов контракта — ошибка, а не пропуск.
+      - name: make ci
+        run: make ci
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: deb
-          path: dist/
+          path: |
+            dist/*.deb
+            dist/SHA256SUMS
+          retention-days: 7
+
+  vuln:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: make vuln
+        run: make vuln
+
+  # Адаптер internal/teleport против настоящего cream по пину
+  # test/integration/cream-pin.env. Пока cream 1.0.0 не выпущен, пин пуст —
+  # цель пропускает прогон строкой «пропуск — пин cream пуст», job зелёный.
+  integration:
+    name: Integration (cream by pin)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: make test-integration
+        run: make test-integration
+
+  # Сквозной тест (план Task 20, спека §15.3): контейнер debian:12 с systemd,
+  # cream по пину, снимок каталога cream-extensions по пину test/e2e/catalog-pin.env,
+  # stvor-agent из dist/. Тяжёлый и зависит от cgroup раннера (риск R9 плана) —
+  # не на каждый PR: на main и вручную, по одному; релиз его не ждёт.
+  e2e:
+    name: E2E (systemd in container)
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    concurrency:
+      group: e2e
+      cancel-in-progress: false
+    env:
+      CREAM_EXTENSIONS_DIR: ${{ github.workspace }}/.cache/cream-extensions
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      # Снимок каталога — коммит из пина; содержимое сверяет сам тест (sha256 архива).
+      - name: Пин снимка каталога
+        id: pin
+        run: |
+          set -euo pipefail
+          line="$(grep -E '^CE_COMMIT=[0-9a-f]{40}$' test/e2e/catalog-pin.env)"
+          echo "commit=${line#CE_COMMIT=}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          repository: iamletenkov/cream-extensions
+          ref: ${{ steps.pin.outputs.commit }}
+          path: .cache/cream-extensions
+          persist-credentials: false
+
+      - name: make e2e
+        run: make e2e
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: e2e-logs
+          path: .scratchpad/test-runs/
+          if-no-files-found: ignore
+          retention-days: 7
 
   release-please:
     name: Release Please
-    needs: check
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [check, vuln, integration]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -102,99 +203,143 @@ jobs:
           manifest-file: .github/release_please/.release-please-manifest.json
           token: ${{ secrets.GITHUB_TOKEN }}
 
-  # Если сборка упала, релиз с тегом уже виден без файлов. Чинится не
-  # откатом, а повторной сборкой: «Re-run failed jobs» в том же прогоне либо
-  # ручной запуск с release_tag=<тег>.
+  # Ассеты релиза: после release-please, создавшего релиз, или вручную по tag.
+  # На ручном запуске release-please пропущен — !cancelled() не даёт пропуску
+  # снять и этот job. Упала сборка — «Re-run failed jobs» или ручной запуск
+  # с tag и upload=true, не откат релиза.
   release-artifacts:
-    name: Attach .deb and SHA256SUMS
+    name: Release assets (.deb, SHA256SUMS)
     needs: release-please
     if: >-
-      github.ref == 'refs/heads/main' &&
-      (needs.release-please.outputs.release_created == 'true' ||
-       (github.event_name == 'workflow_dispatch' && inputs.release_tag != ''))
+      !cancelled() && (
+        needs.release-please.outputs.release_created == 'true' ||
+        (github.event_name == 'workflow_dispatch' && inputs.tag != '')
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    # Один тег — одна сборка за раз; начатую загрузку не отменять.
+    concurrency:
+      group: release-artifacts-${{ needs.release-please.outputs.tag_name || inputs.tag }}
+      cancel-in-progress: false
     env:
-      TAG: ${{ needs.release-please.outputs.tag_name || inputs.release_tag }}
+      TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
+      UPLOAD: ${{ needs.release-please.outputs.release_created == 'true' || inputs.upload }}
     steps:
-      # Ручной запуск обязан указывать на существующий опубликованный релиз:
-      # прикладывать файлы к черновику или к опечатке — нельзя.
-      - name: Validate release tag
+      # Только 4.x и новее: ассеты 3.x (пакет *_all.deb прежнего имени)
+      # не перевыпускаются (спека §14), а цели make deb на тегах 3.x нет.
+      - name: Check tag
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] \
-            || { echo "::error::тег '$TAG' не похож на vX.Y.Z"; exit 1; }
-          draft="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)"
-          [[ "$draft" == "false" ]] \
-            || { echo "::error::релиз $TAG не найден или ещё черновик"; exit 1; }
+          [[ "$TAG" =~ ^v([0-9]+)\.[0-9]+\.[0-9]+$ ]] \
+            || { echo "::error::тег должен быть vX.Y.Z, получено: '$TAG'"; exit 1; }
+          (( BASH_REMATCH[1] >= 4 )) \
+            || { echo "::error::$TAG: ассеты 3.x этим workflow не собираются"; exit 1; }
+          if [ "$UPLOAD" = true ]; then
+            draft="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)"
+            [ "$draft" = false ] \
+              || { echo "::error::релиз $TAG не найден или ещё черновик"; exit 1; }
+          fi
 
       # Собираем ровно тот коммит, на который указывает тег: при ручной
       # пересборке старого релиза HEAD main давно ушёл вперёд.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: refs/tags/${{ env.TAG }}
-          fetch-depth: 0   # SOURCE_DATE_EPOCH — время последнего коммита
+          fetch-depth: 0   # время коммита тега
           persist-credentials: false
 
-      - name: Build .deb and SHA256SUMS
+      # VERSION — тег без «v», SOURCE_DATE_EPOCH — время коммита тега: те же
+      # байты, что у make deb / repro-check локально на этом коммите.
+      - name: make deb
         run: |
           set -euo pipefail
-          ver="${TAG#v}"
-          file_ver="$(tr -d '[:space:]' < VERSION)"
-          [[ "$file_ver" == "$ver" ]] \
-            || { echo "::error::тег $TAG, а VERSION=$file_ver"; exit 1; }
+          epoch="$(git log -1 --format=%ct "refs/tags/$TAG^{commit}")"
           rm -r -f dist
-          tools/build-deb.sh
-          test -f "dist/bisquite-teleport-agent_${ver}_all.deb"
-          (cd dist && sha256sum -c SHA256SUMS)
+          make deb VERSION="${TAG#v}" SOURCE_DATE_EPOCH="$epoch"
+
+      # Бинарь знает свою версию из ldflags: version --short обязан совпасть
+      # с тегом (build-all сверяет то же внутри make, здесь — явно по тегу).
+      - name: Verify version and assets
+        run: |
+          set -euo pipefail
+          v="${TAG#v}"
+          got="$(dist/stvor-agent-linux-amd64 version --short)"
+          [ "$got" = "$v" ] \
+            || { echo "::error::version --short = '$got', тег $TAG"; exit 1; }
+          cd dist
+          for f in "stvor-agent_${v}_amd64.deb" "stvor-agent_${v}_arm64.deb"; do
+            [ -s "$f" ] || { echo "::error::нет $f"; exit 1; }
+            grep -qx "[0-9a-f]\{64\}  $f" SHA256SUMS \
+              || { echo "::error::$f нет в SHA256SUMS"; exit 1; }
+          done
+          [ "$(wc -l < SHA256SUMS)" -eq 2 ] \
+            || { echo "::error::в SHA256SUMS не 2 строки"; exit 1; }
+          sha256sum -c SHA256SUMS
+          {
+            echo "### Ассеты $TAG"
+            echo '```'
+            cat SHA256SUMS
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # Сборка воспроизводимая: при пересборке сумма та же, --clobber
       # заменяет файлы тем же содержимым.
-      - name: Upload files to the release
+      - name: Upload to GitHub Release
+        if: env.UPLOAD == 'true'
+        working-directory: dist
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload "$TAG" dist/*.deb dist/SHA256SUMS \
-            --repo "$GITHUB_REPOSITORY" --clobber
+          v="${TAG#v}"
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+            "stvor-agent_${v}_amd64.deb" "stvor-agent_${v}_arm64.deb" SHA256SUMS
 
-  # Релиз сам поднимает пин агента в cream-extensions: запускает там
-  # agent-bump.yml, который ставит версию и sha256 из SHA256SUMS релиза
-  # в расширение teleport-agent и открывает PR. Поэтому job идёт только
-  # после release-artifacts: до загрузки файлов суммы ещё нет.
+  # Релиз поднимает пин агента в cream-extensions: запускает там
+  # agent-bump.yml, который берёт SHA256SUMS релиза, ставит версию и суммы
+  # в обёртку stvor-agent и открывает PR. Поэтому job идёт после
+  # release-artifacts: до загрузки файлов сумм ещё нет.
+  #
+  # Включается переменной репозитория EXTENSIONS_BUMP_ENABLED=true. Пока
+  # перенацеленный agent-bump (план, Task 14) не слит в main cream-extensions,
+  # тамошний agent-bump ищет пакет 3.x (*_all.deb прежнего имени) и упадёт,
+  # поэтому по умолчанию — предупреждение и пропуск; пин обёртки в пилотной
+  # ветке ставится руками tools/agent-bump.sh.
   #
   # Токен — EXTENSIONS_DISPATCH_TOKEN: fine-grained PAT только на
   # iamletenkov/cream-extensions с правом Actions: Read and write. Код он
   # пушить не может — ветку и PR там делает уже GITHUB_TOKEN того workflow.
   # GITHUB_TOKEN этого репозитория чужой workflow запустить не может.
   #
-  # Те же условия, что у release-artifacts: push в main с созданным релизом
-  # либо ручная пересборка с release_tag. Пересборка дёргает подъём снова —
-  # он идемпотентен (пин уже на версии, PR открыт, релиз старше пина — PR
-  # нет), а если первый dispatch не дошёл, это и есть способ повторить.
-  # На pull_request секретов нет, а pull_request_target здесь не нужен
-  # и опасен. Без секрета (форк, чужой клон) шаг пропускается
-  # с предупреждением; в iamletenkov/stvor-agent это отказ.
+  # Повторный запуск (ручной с tag и upload=true) идемпотентен: пин уже на
+  # версии или PR открыт — второго PR нет. Без секрета в форке — пропуск
+  # с предупреждением; в iamletenkov/stvor-agent — отказ.
   dispatch-extensions:
     name: Bump agent in cream-extensions
     needs: [release-please, release-artifacts]
     if: >-
-      github.ref == 'refs/heads/main' &&
-      ((github.event_name == 'push' && needs.release-please.outputs.release_created == 'true') ||
-       (github.event_name == 'workflow_dispatch' && inputs.release_tag != ''))
+      !cancelled() && needs.release-artifacts.result == 'success' && (
+        needs.release-please.outputs.release_created == 'true' ||
+        (github.event_name == 'workflow_dispatch' && inputs.tag != '' && inputs.upload)
+      )
     runs-on: ubuntu-latest
     permissions: {}
     steps:
       - name: Dispatch agent-bump.yml
         env:
           GH_TOKEN: ${{ secrets.EXTENSIONS_DISPATCH_TOKEN }}
-          TAG: ${{ needs.release-please.outputs.tag_name || inputs.release_tag }}
+          ENABLED: ${{ vars.EXTENSIONS_BUMP_ENABLED }}
+          TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
           TARGET_REPO: iamletenkov/cream-extensions
           HOME_REPO: iamletenkov/stvor-agent
         run: |
           set -euo pipefail
+          if [ "$ENABLED" != true ]; then
+            echo "::warning::EXTENSIONS_BUMP_ENABLED не true — подъём пина $TAG в $TARGET_REPO пропущен (руками: tools/agent-bump.sh в cream-extensions)"
+            exit 0
+          fi
           if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Тег релиза должен иметь вид vX.Y.Z, получено: '$TAG'"
             exit 1

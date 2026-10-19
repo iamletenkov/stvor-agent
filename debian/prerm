@@ -1,9 +1,0 @@
-#!/bin/sh
-# prerm of bisquite-teleport-agent: on removal the helper units stop; the
-# agent and its registration stay (see pkg-setup prerm-remove).
-set -e
-case "$1" in
-    remove|deconfigure)
-        "${BISQUITE_TELEPORT_ROOT:-}/usr/lib/bisquite-teleport/pkg-setup" prerm-remove || true ;;
-esac
-exit 0

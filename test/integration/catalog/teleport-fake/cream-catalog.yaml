@@ -1,0 +1,4 @@
+schema: cream/v1
+name: sa-teleport-fake
+version: 1.0.0
+roots: [extensions]

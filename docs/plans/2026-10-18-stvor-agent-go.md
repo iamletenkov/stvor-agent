@@ -12,30 +12,30 @@
 
 ## Progress Tracker
 Волна A — SA, не зависит от cream:
-- [ ] Task 1: Go-каркас SA, общие интерфейсы и типы (go.mod, Makefile, main.go)
-- [ ] Task 2: `internal/portal` — клиент `/robot-api/v1/labels` и строгий разбор тела
-- [ ] Task 3: `internal/token`, `internal/state`, `internal/atomicfile`
-- [ ] Task 4: `internal/teleport` — exec-адаптер `cream run teleport …` на поддельном cream, файлы-образцы контракта
-- [ ] Task 5: `internal/reconcile` — один тик
-- [ ] Task 6: `internal/daemon` — цикл, джиттер, backoff, сигналы, блокировка
-- [ ] Task 7: юнит `packaging/stvor-agent.service` и его тест
-- [ ] Task 8: `internal/cli` и сборка команд в `cmd/stvor-agent`
-- [ ] Task 9: `docs/test-map.md` — перенос проверок `tests/test-labels.sh`, доводка недостающих Go-тестов
+- [x] Task 1: Go-каркас SA, общие интерфейсы и типы (go.mod, Makefile, main.go)
+- [x] Task 2: `internal/portal` — клиент `/robot-api/v1/labels` и строгий разбор тела
+- [x] Task 3: `internal/token`, `internal/state`, `internal/atomicfile`
+- [x] Task 4: `internal/teleport` — exec-адаптер `cream run teleport …` на поддельном cream, файлы-образцы контракта
+- [x] Task 5: `internal/reconcile` — один тик
+- [x] Task 6: `internal/daemon` — цикл, джиттер, backoff, сигналы, блокировка
+- [x] Task 7: юнит `packaging/stvor-agent.service` и его тест
+- [x] Task 8: `internal/cli` и сборка команд в `cmd/stvor-agent`
+- [x] Task 9: `docs/test-map.md` — перенос проверок `tests/test-labels.sh`, доводка недостающих Go-тестов
 
 Волна B — после релиза cream `v1.0.0`:
-- [ ] Task 10: CE — инструменты проверки для `cream/v1` (`cream validate`, `check.sh`, Makefile)
-- [ ] Task 11: CE — расширение `teleport`: перенос join/render/apps/os_logins/leave/scrub-token, хуки, юниты, `test-join.sh`
-- [ ] Task 12: CE — `teleport`: управляемые и командные метки, `set-managed`, `managed-status`, `test-managed.sh`
-- [ ] Task 13: CE — обёртка `stvor-agent` (пины по архитектурам, drop-in метки `stvor_agent`, `test-stvor-agent.sh`)
-- [ ] Task 14: CE — путь `apps.d` у `code-server`/`selkies`, удаление `teleport-agent`, `agent-bump` на `stvor-agent`
-- [ ] Task 15: SA — интеграционный тест адаптера с настоящим `cream` и фиктивным расширением
+- [x] Task 10: CE — инструменты проверки для `cream/v1` (`cream validate`, `check.sh`, Makefile)
+- [x] Task 11: CE — расширение `teleport`: перенос join/render/apps/os_logins/leave/scrub-token, хуки, юниты, `test-join.sh`
+- [x] Task 12: CE — `teleport`: управляемые и командные метки, `set-managed`, `managed-status`, `test-managed.sh`
+- [x] Task 13: CE — обёртка `stvor-agent` (пины по архитектурам, drop-in метки `stvor_agent`, `test-stvor-agent.sh`)
+- [x] Task 14: CE — путь `apps.d` у `code-server`/`selkies`, удаление `teleport-agent`, `agent-bump` на `stvor-agent`
+- [x] Task 15: SA — интеграционный тест адаптера с настоящим `cream` и фиктивным расширением
 
 Волна C — упаковка, выпуск, чистка, приёмка:
-- [ ] Task 16: SA — упаковка nfpm `.deb` amd64/arm64, сопровождающие скрипты, проверка воспроизводимости
-- [ ] Task 17: SA — CI и release-please 4.0.0, dispatch бампа пина в CE
-- [ ] Task 18: SA — документация (README, SECURITY, portal-labels-api, AGENTS/CLAUDE, индекс, STATUS)
-- [ ] Task 19: SA — удаление bash-кода, юнитов, тестов и инструментов 3.x; сверка файлов-образцов с CE
-- [ ] Task 20: SA — сквозной тест в контейнере Debian 12 с systemd (спека §15.3)
+- [x] Task 16: SA — упаковка nfpm `.deb` amd64/arm64, сопровождающие скрипты, проверка воспроизводимости
+- [x] Task 17: SA — CI и release-please 4.0.0, dispatch бампа пина в CE
+- [x] Task 18: SA — документация (README, SECURITY, portal-labels-api, AGENTS/CLAUDE, индекс, STATUS)
+- [x] Task 19: SA — удаление bash-кода, юнитов, тестов и инструментов 3.x; сверка файлов-образцов с CE
+- [x] Task 20: SA — сквозной тест в контейнере Debian 12 с systemd (спека §15.3)
 - [ ] Task 21: выпуск SA 4.0.0 и пин в обёртке CE (внешнее действие — с «да» владельца)
 - [ ] Task 22: приёмка на тестовой ВМ `pve-robot-1` (спека §16)
 - [ ] Task 23: Финальная интеграция + `make ci`
@@ -389,6 +389,11 @@ cream 1.0.0).
   shellcheck сопровождающих скриптов; сценарии скриптов на подменном `systemctl` (есть/нет systemd, есть/нет
   токена, `remove`/`purge`) — перенос идей `tests/test-package.sh`.
 - **Готово:** `make ci` (с `repro`).
+- **Исполнено:** nfpm v2.47.0 воспроизводим (`make repro-check` — две сборки с пустыми кешами, равные суммы), откат
+  на `tools/build-deb.sh` не нужен. Проверки пакета — не Go-тест, а `tools/check-deb.sh` (состав, поля, лицензия,
+  статический ELF) и `tools/check-deb-live.sh` (живые `dpkg -i/-r/--purge` от root с поддельным `systemctl`) в
+  `debian:13` внутри `make deb`, как в cream; `make repro` назван `make repro-check`. `postinst` включает юнит только при
+  первой установке — обновление не отменяет `disable` оператора. Пакеты 3.x — в `dist/legacy/`.
 
 ### Task 17: SA — CI и release-please 4.0.0
 - **Репозиторий:** SA. **Зависит:** 16 (имена целей и артефактов — заранее зафиксированы здесь: `make ci`, `make deb`,
@@ -408,6 +413,15 @@ cream 1.0.0).
   отчёте; цель `make actionlint` добавляет Task 19); dry-run release-please (`release-please release-pr --dry-run`
   в контейнере) показывает 4.0.0.
 - **Готово:** actionlint чистый (вывод в отчёте), `make ci` зелёный; job `check` проходит на черновом PR.
+- **Исполнено:** 4.0.0 задан `"release-as": "4.0.0"` в конфиге (не зависит от заголовка squash-коммита); job
+  `check` краснеет, когда тег `v<release-as>` уже есть, — `release-as` убирается PR-ом сразу после выхода 4.0.0.
+  Манифест остаётся `3.1.0`: 3.1.1 вышел тегом вне `main`, с ним release-please не нашёл бы коммит релиза в истории.
+  Jobs `check` (gitleaks, actionlint по digest, `make ci`, checkout CE в `.cache/cream-extensions`), `vuln`,
+  `integration` (пин пуст — пропуск), `release-please`, `release-artifacts` (`make deb VERSION=<тег без v>`,
+  сверка `version --short` и `SHA256SUMS`; ручной запуск `tag` + `upload`, только 4.x), `dispatch-extensions`
+  (под `EXTENSIONS_BUMP_ENABLED`). **`VERSION` не удалён** — его читают `tools/build-deb.sh` и
+  `tests/test-package.sh` 3.x (рулинг 5), удаление перенесено в Task 19. Dry-run release-please локально невозможен:
+  CLI читает конфиг из ветки на GitHub — проверка на черновом PR / после слияния.
 
 ### Task 18: SA — документация
 - **Репозиторий:** SA. **Зависит:** волна A (поведение), 16/17 — только имена. **Волна:** C1.
@@ -430,11 +444,25 @@ cream 1.0.0).
   (2) соседняя копия CE (`CREAM_EXTENSIONS_DIR`, по умолчанию `../cream-extensions`) несёт тот же набор в
   `extensions/debian/teleport/tests/fixtures/`; нет копии — локально skip с предупреждением, в CI копию даёт
   checkout по ref (Task 17).
-- **Файлы:** удаляемые, `Makefile`, `lefthook.yml`, `tools/check-contract-fixtures.sh`,
+- **Файлы:** удаляемые (и `VERSION` — перенесён из Task 17; `Makefile` без него берёт версию `dev`, а `make deb`
+  локально — `VERSION=<v>`), `Makefile`, `lefthook.yml`, `tools/check-contract-fixtures.sh`,
   `tools/contract-fixtures.sha256`.
 - **Тесты первыми:** `check-contract-fixtures.sh` красный при изменённом байте образца или расхождении с соседней
   копией, skip без копии, зелёный на пине (вывод в отчёте).
-- **Готово:** `make ci`; `git grep -n 'bisquite'` даёт только CHANGELOG/историю и `portal-labels-api.md`.
+- **Готово:** `make ci`; `git grep -n 'bisquite'` даёт только CHANGELOG/историю и `portal-labels-api.md`
+  (ослаблено рулингом 10).
+- **Исполнено:** удалены `src/`, `lib/` (с `bisquite-conf`), `debian/`, `tests/test-*.sh`, `tools/check.sh`,
+  `tools/build-deb.sh`, `VERSION`; цели `legacy-*` и шаги CI 3.x (shellcheck/lintian, `dist/legacy/`) сняты, отдельный
+  шаг actionlint в CI заменён целью `make actionlint` внутри `make lint`. Без `VERSION=` Makefile собирает
+  `0.0.0-dev` (не `dev`: версия `.deb` обязана начинаться с цифры, а `check-deb` сверяет её с `version --short`);
+  без ldflags бинарь по-прежнему `dev`. `make contract-fixtures` (в `make lint`) — пин `9c01d6b8…` равен пину CE;
+  без копии CE или без образцов в ней (main CE до слияния пилота) — локально пропуск, при `CI=true|1` — ошибка.
+  `tools/check-test-map.sh` — сверка номеров строк снята вместе с `tests/test-labels.sh` (карта итоговая, номера —
+  по тегу `v3.1.0`). `check-deb.sh` — лишний grep следов 3.x снят: точный список файлов пакета их и так не пускает.
+  shellcheck в `make lint` — с `-x` и по `tools/*.sh`, `test/integration/*.sh`. lefthook — gofmt staged `*.go`.
+  `NOTICE` — под `stvor-agent` (строка о `lib/bisquite-conf` ушла). Единственное упоминание в коде —
+  `packaging/copyright`: `Required Notice` лицензии, побайтная копия `LICENSE` (её сверяет `check-deb.sh`); текст
+  лицензии меняет только владелец.
 
 ### Task 20: SA — сквозной тест в контейнере с systemd
 - **Репозиторий:** SA. **Зависит:** 16, 19; CE 12, 13 (снимок каталога пилотной ветки). **Волна:** C3 (один,
@@ -503,6 +531,19 @@ cream 1.0.0).
    успешном разборе `cream actions --json`.
 5. **bash 3.x живёт в ветке до Task 19**: `make ci` гоняет и Go, и legacy-проверки, чтобы ветка была зелёной на
    каждом коммите.
+8. **Остановка в бюджет §5.8** (`TimeoutStopSec=90`, худший тик ≈ 150 с; рулинг Р9-SA поднял до 120 — ниже): спека не меняется. Служба читает сигналы
+   всё время; SIGTERM во время тика закрывает канал «просьба остановиться», который `daemon` передаёт в `Tick`
+   (не отмена `ctx` тика). Тик с этой просьбой прерывает опрос портала отменой его собственного контекста (отказом не
+   считается и не пишется), не начинает `set-managed`, а начатый — дожидается и пропускает `managed-status` после
+   него (проверит следующий тик). Остановка важнее накопленных SIGHUP; несколько SIGHUP до тика — один тик.
+9. **Р9-SA: `TimeoutStopSec=120`** (после Task 15): начатый `set-managed` идёт до 90 с, а по его тайм-ауту адаптер
+   ждёт ещё до 15 с между SIGTERM и SIGKILL группе `cream` — 90 с юнита не хватало. Юнит, его тест и спека §5.8,
+   §9.1 правятся вместе; тайм-аут одного вызова `systemctl` — 150 с (остановка 120 с плюс старт).
+10. **Упоминания 3.x после Task 19** (рулинг контроллера, ослабляет «Готово» Task 19): допустимы в `README.md`,
+   `SECURITY.md`, `AGENTS.md`, `CHANGELOG.md`, `docs/portal-labels-api.md`, `docs/research/**`, `docs/specs/**`,
+   `docs/plans/**`, `docs/test-map.md`; в коде (`cmd/`, `internal/`, `packaging/`, `tools/`, `test/`, `Makefile`,
+   `.github/`) — ни одного (`git grep -n -i bisquite -- cmd internal packaging tools test Makefile .github`), кроме
+   текста лицензии в `packaging/copyright` (копия `LICENSE`, меняет только владелец).
 
 ## Риски исполнения
 | # | Риск | Что делаем |

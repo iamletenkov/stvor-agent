@@ -1,9 +1,0 @@
-[Unit]
-Description=Watch /etc/bisquite/teleport/apps.d for app declarations
-
-[Path]
-PathChanged=/etc/bisquite/teleport/apps.d
-Unit=bisquite-teleport-apps.service
-
-[Install]
-WantedBy=paths.target

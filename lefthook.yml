@@ -23,6 +23,23 @@ pre-commit:
           docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:stable -x -S style $files
         fi
 
+    # gofmt -l по staged *.go: тот же образ Go, что в Makefile (GO_IMAGE).
+    gofmt:
+      glob: "*.go"
+      run: |
+        files=""
+        for f in {staged_files}; do [ -f "$f" ] && files="$files $f"; done
+        [ -z "$files" ] && exit 0
+        if command -v gofmt >/dev/null 2>&1; then
+          out="$(gofmt -l $files)"
+        else
+          out="$(docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/src" -w /src golang:1.26.9 gofmt -l $files)"
+        fi
+        [ -z "$out" ] && exit 0
+        echo "gofmt: не отформатированы (make fmt):"
+        echo "$out"
+        exit 1
+
     gitleaks:
       run: |
         if command -v gitleaks >/dev/null 2>&1; then
@@ -36,7 +53,7 @@ pre-commit:
                    zricethezav/gitleaks:v8.30.1 protect --source=/repo --staged --redact -v 2>&1)"
           rc=$?
           printf '%s\n' "$out"
-          staged="$(git diff --cached --numstat | grep -cv '^-')" || true
+          staged="$(git diff --cached --diff-filter=d --numstat | awk '$1 != "-" && $1 > 0' | wc -l)"
           if [ "${staged:-0}" -gt 0 ] && printf '%s' "$out" | grep -qE 'scanned ~0 bytes'; then
             echo "gitleaks: staged-файлы есть, а просканировано 0 байт — это отказ проверки" >&2
             exit 1

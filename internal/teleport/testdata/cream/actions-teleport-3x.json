@@ -1,0 +1,55 @@
+{
+  "cream": "1.0.0",
+  "command": "actions",
+  "ok": true,
+  "result": {
+    "ext": "teleport",
+    "version": "3.1.0",
+    "actions": [
+      {
+        "name": "join",
+        "summary": "регистрация узла: секрет со stdin",
+        "args": "pairs",
+        "params": [
+          {
+            "name": "TELEPORT_PROXY",
+            "type": "host",
+            "required": true,
+            "secret": false
+          },
+          {
+            "name": "TELEPORT_JOIN_TOKEN",
+            "type": "str",
+            "required": true,
+            "secret": true
+          }
+        ],
+        "stdin": "secret",
+        "lock": "exclusive",
+        "output": "text",
+        "timeout_seconds": 300,
+        "phases": [
+          "live"
+        ],
+        "root": true
+      },
+      {
+        "name": "status",
+        "summary": "состояние узла",
+        "args": "none",
+        "params": [],
+        "stdin": "none",
+        "lock": "none",
+        "output": "text",
+        "timeout_seconds": 120,
+        "phases": [
+          "build",
+          "live"
+        ],
+        "root": true
+      }
+    ]
+  },
+  "warnings": [],
+  "error": null
+}

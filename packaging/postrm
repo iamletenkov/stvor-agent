@@ -1,0 +1,19 @@
+#!/bin/sh
+# postrm of stvor-agent (spec §9.1): purge removes the token and the state of
+# the agent. The Teleport labels it set stay: they belong to the teleport
+# extension of cream (/etc/cream/teleport), as does /etc/cream/stvor-agent.
+set -e
+
+case "$1" in
+purge)
+	rm -rf /etc/stvor-agent /var/lib/stvor-agent
+	;;
+esac
+
+if [ "$1" = remove ] || [ "$1" = purge ]; then
+	if [ -d /run/systemd/system ]; then
+		systemctl daemon-reload || true
+	fi
+fi
+
+exit 0

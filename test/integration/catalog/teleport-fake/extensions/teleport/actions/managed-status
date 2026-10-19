@@ -1,0 +1,8 @@
+#!/bin/sh
+# Фиктивное действие: сценарий — файлы /var/lib/teleport-fake/managed-status.*
+set -eu
+d=/var/lib/teleport-fake
+n=managed-status
+if [ -f "$d/$n.sleep" ]; then sleep "$(cat "$d/$n.sleep")"; fi
+if [ -f "$d/$n.out" ]; then cat "$d/$n.out"; fi
+exit "$(cat "$d/$n.code" 2>/dev/null || echo 0)"

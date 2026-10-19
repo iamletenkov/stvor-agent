@@ -13,7 +13,7 @@ FILE="$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/nul
 case "$FILE" in /*) ;; *) FILE="${CLAUDE_PROJECT_DIR:-$PWD}/$FILE" ;; esac
 [ -f "$FILE" ] || exit 0
 
-GO_IMAGE="${GO_IMAGE:-golang:1.25.11}"
+GO_IMAGE="${GO_IMAGE:-golang:1.26.9}"
 SC_IMAGE="${SC_IMAGE:-koalaman/shellcheck:stable}"
 DIR="$(dirname "$FILE")"
 BASE="$(basename "$FILE")"

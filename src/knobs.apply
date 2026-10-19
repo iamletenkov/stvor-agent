@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-# Apply hook of the teleport domain: `bisquite-conf set teleport …` and
-# `bisquite-teleport set` end here. Non-blocking: see `bisquite-teleport apply`.
-# Resolved through the link /opt/bisquite/knobs/teleport.apply (the place
-# bisquite-conf looks for schemas), so the CLI is the one next to this schema.
-set -uo pipefail
-exec "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/bisquite-teleport" apply "$@"

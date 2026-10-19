@@ -1,0 +1,21 @@
+{
+  "cream": "1.0.0",
+  "command": "run",
+  "ok": true,
+  "result": {
+    "action": "teleport/managed-status",
+    "exit_code": 0,
+    "output": {
+      "schema": 1,
+      "managed": {
+        "env": "prod",
+        "space": "sp-1"
+      },
+      "pending": false,
+      "joined": true,
+      "active": true
+    }
+  },
+  "warnings": [],
+  "error": null
+}

@@ -1,0 +1,53 @@
+#!/bin/bash
+# Fake Teleport agent of the end-to-end test (plan Task 20): no cluster.
+#   teleport version                 — the version the teleport extension checks
+#   teleport start --config F --pid-file=P
+#                                    — "registers" (host_uuid), keeps a copy of the
+#                                      config it got at start and at every HUP
+#                                      (Teleport's graceful reload) in /var/lib/e2e-teleport,
+#                                      counts starts and HUPs, runs until SIGTERM.
+set -u
+case "${1:-}" in
+version)
+	echo "Teleport v18.10.0 git:v18.10.0-0-g00000000 go1.24.0"
+	exit 0
+	;;
+start) shift ;;
+*)
+	echo "fake teleport: неизвестная команда: $*" >&2
+	exit 2
+	;;
+esac
+
+cfg="" pidf=""
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--config) cfg=$2; shift ;;
+	--config=*) cfg=${1#*=} ;;
+	--pid-file) pidf=$2; shift ;;
+	--pid-file=*) pidf=${1#*=} ;;
+	esac
+	shift
+done
+[ -r "$cfg" ] || { echo "fake teleport: нет конфига '$cfg'" >&2; exit 1; }
+
+out=/var/lib/e2e-teleport
+mkdir -p "$out" /var/lib/teleport
+bump() { echo $(($(cat "$out/$1" 2>/dev/null || echo 0) + 1)) >"$out/$1"; }
+bump starts
+cp "$cfg" "$out/config.start"
+[ -n "$pidf" ] && echo $$ >"$pidf"
+[ -s /var/lib/teleport/host_uuid ] || cat /proc/sys/kernel/random/uuid >/var/lib/teleport/host_uuid
+
+on_hup() {
+	bump hups
+	cp "$cfg" "$out/config.hup"
+	echo "fake teleport: HUP — конфиг перечитан"
+}
+trap on_hup HUP
+trap 'exit 0' TERM INT
+echo "fake teleport: запущен с $cfg"
+while :; do
+	sleep 1 &
+	wait $!
+done

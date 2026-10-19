@@ -265,6 +265,11 @@ S вызывает только два действия T и только чер
 | каждый тик, после `set-managed`, `status` | `/usr/bin/cream run teleport managed-status` (`lock: none` — не ждёт долгий `join`) | 15 с | stdout ≤ 64 КиБ, строгий JSON схемы 1 (ниже); код ≠ 0 или не JSON → `tsErr` |
 | метки не действуют | `/usr/bin/cream run --lock-timeout 20s teleport set-managed env=<v> space=<v>` | 90 с (ожидание блокировки ≤ 20 с + restart с подтверждением ≤ 30 с + запас) | код и JSON (ниже) |
 
+По тайм-ауту S шлёт SIGTERM группе процессов `cream` и SIGKILL той же группе через 15 с: действие cream держит в
+своей отдельной группе и убивает её сам по SIGTERM (у него 10 с между своими SIGTERM и SIGKILL), а SIGKILL сразу
+оставил бы действие сиротой (найдено интеграционным тестом с настоящим cream, план Task 15). Собственный тайм-аут
+действия из манифеста cream отдаёт кодом 79.
+
 `stvor-agent disable` T не вызывает: управляемые `env`/`space` остаются (узел не переезжает молча), а метка
 `stvor_agent` пустеет сама, потому что `version --label` без файла токена печатает пустую строку (§4.4).
 
@@ -285,7 +290,7 @@ S проверяет ответ строго (`schema == 1`, ключи и зн�
 
 ### 5.8 Обработка остановки посреди применения
 `KillMode=mixed`: при остановке службы SIGTERM получает только `stvor-agent`, он дожидается дочернего `cream run`
-(`TimeoutStopSec=90`). Если дочерний всё же убит (SIGKILL по тайм-ауту, отключение питания) — маркер
+(`TimeoutStopSec=120`: `set-managed` идёт до 90 с, и ещё до 15 с между SIGTERM и SIGKILL его группе — §5.7). Если дочерний всё же убит (SIGKILL по тайм-ауту, отключение питания) — маркер
 `managed-pending` T записан **до** записи ручек, и следующий тик после старта увидит `pending=true` → `set-managed`
 повторит restart.
 
@@ -335,7 +340,8 @@ S проверяет ответ строго (`schema == 1`, ключи и зн�
  "restart":{"attempts":0,"paused_until":null},
  "last_poll":{"at":"2026-10-18T10:00:00Z","outcome":"not_modified","http_status":304}}
 ```
-  `token`: `ok | absent | bad_mode | bad_owner | corrupt`; `outcome`: `ok | not_modified | unauthorized | rate_limited |
+  `token`: `ok | absent | bad_mode | bad_owner | no_access | corrupt` (`no_access` — запуск не от root: файл закрыт,
+  `enabled` — `null`, код 1, причина «нужен root для полного статуса» в stderr); `outcome`: `ok | not_modified | unauthorized | rate_limited |
   network | redirect | http_error | bad_body | skipped_locked`. Без `--json` — те же поля таблицей по-русски.
 - Портал видит агента через существующие поля (`pulled_at`, `applied_revision`, метка `stvor_agent` в инвентаре) —
   новых каналов телеметрии нет.
@@ -364,14 +370,15 @@ S проверяет ответ строго (`schema == 1`, ключи и зн�
   создаются `enable`/`StateDirectory=`.
 - Юнит: `Type=exec`, `ExecStart=/usr/bin/stvor-agent run`, `ConditionPathExists=/etc/stvor-agent/token` (без токена
   служба не стартует — «ждёт `enable`»), `After=`/`Wants=network-online.target`, `Restart=always`, `RestartSec=10`,
-  `KillMode=mixed`, `TimeoutStopSec=90`, `EnvironmentFile=-/etc/cream/stvor-agent/config`, `StateDirectory=stvor-agent`,
+  `KillMode=mixed`, `TimeoutStopSec=120` (§5.8), `EnvironmentFile=-/etc/cream/stvor-agent/config`, `StateDirectory=stvor-agent`,
   `StateDirectoryMode=0700`, hardening из §6, `WantedBy=multi-user.target`.
-- Сопровождающие скрипты: `postinst` — `daemon-reload` (если systemd запущен), `enable` юнита; при наличии токена —
+- Сопровождающие скрипты: `postinst` — `daemon-reload` (если systemd запущен), `enable` юнита при первой установке
+  (обновление не отменяет `disable` оператора); при наличии токена —
   `try-restart` (обновление пакета). `prerm remove` — `disable --now`. `postrm purge` — удалить `/etc/stvor-agent` и
   `/var/lib/stvor-agent`. Сборка образа (нет systemd) — только ссылка `enable`, ничего не стартует.
 
 ### 9.2 Сборка и выпуск
-- `make` в контейнере `golang:1.25.11` (как в cream): `make lint` (gofmt, `go vet`, golangci-lint), `make test`
+- `make` в контейнере `golang:1.26.9` (как в cream): `make lint` (gofmt, `go vet`, golangci-lint), `make test`
   (`go test -race ./...`), `make build-all` (`CGO_ENABLED=0 go build -trimpath -buildvcs=false
   -ldflags "-s -w -buildid= -X …/version.Version=<v>"`), `make deb` (nfpm), `make ci` (всё + проверка
   воспроизводимости: две сборки подряд дают равные суммы `.deb`).
@@ -435,7 +442,7 @@ extensions/debian/teleport/
 
 ### 10.3 Ручки домена `teleport` (`/etc/cream/teleport/config`)
 Из прежней схемы остаются `TELEPORT_PROXY` (readonly, пишет `join`), `TELEPORT_JOIN_METHOD` (readonly),
-`TELEPORT_TOKEN` (readonly, `secret: file`), `TELEPORT_CA_PIN`, `TELEPORT_ENV`, `TELEPORT_NODENAME`, `TELEPORT_LABELS`,
+`TELEPORT_TOKEN` (readonly, имя токена — не секрет; РT1), `TELEPORT_CA_PIN`, `TELEPORT_ENV`, `TELEPORT_NODENAME`, `TELEPORT_LABELS`,
 `TELEPORT_APPS`, `TELEPORT_APPS_DISABLE`, `TELEPORT_APPS_ICONS`, `TELEPORT_APPS_DISCOVERY`, `TELEPORT_OS_LOGINS` — те
 же типы и регулярные выражения (`ro:` → `readonly`, `?` → `empty`, спека cream §8.2). Удаляется `TELEPORT_LABELS_URL`.
 Добавляются:
@@ -447,8 +454,11 @@ extensions/debian/teleport/
 
 Значение допускает `.` — ради будущих управляющих; S сам ограничивает `env`/`space` DNS-алфавитом портала.
 Зарезервированы в управляемых метках: `app`, `os_logins`, `teleport.icon` (как в `TELEPORT_LABELS`).
-Секретные ключи (`TELEPORT_TOKEN`) `join` пишет вложенным `cream set --allow-readonly teleport KEY=-` со значением на
-stdin: секрет в argv cream отвергает (64, спека cream §8.3).
+**РT1 (2026-10-19).** У действия cream может быть только один секретный параметр (спека cream §4.1), поэтому у
+`join` единственный секрет — `TELEPORT_REGISTRATION_SECRET=-` со stdin: для метода `token` это сам join-токен, для
+`bound_keypair` — секрет регистрации. `TELEPORT_TOKEN` — несекретное имя токена, передаётся парой. Секрет первого
+входа лежит в `$CREAM_STATE_DIR` (0600) до подтверждения регистрации; render берёт его оттуда, `scrub-token` стирает.
+Ни один ключ домена `teleport` не секретный; секрет в argv cream отвергает (64, спека cream §8.3).
 
 **Командные метки (`/etc/cream/teleport/command-labels.d/`).** Обобщение `apps.d`: другое расширение кладёт файл
 `<ключ>` (через `files` своего манифеста — cream владеет файлом и удалит его при `remove`) с одной строкой
