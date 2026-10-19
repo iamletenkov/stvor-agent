@@ -1,0 +1,28 @@
+#!/bin/sh
+# postinst of stvor-agent (spec §9.1). The unit has
+# ConditionPathExists=/etc/stvor-agent/token, so an enabled unit without a
+# token never starts: `stvor-agent enable` writes the token and starts it.
+#   fresh install — enable the unit (in an image build without a running
+#                   systemd this only creates the link, nothing starts);
+#   upgrade       — keep the operator's enable/disable choice;
+#   with a token and a running systemd — try-restart onto the new binary.
+set -e
+
+unit=stvor-agent.service
+
+case "$1" in
+configure)
+	if [ -d /run/systemd/system ]; then
+		systemctl daemon-reload || true
+	fi
+	if [ -z "$2" ] && command -v systemctl >/dev/null 2>&1; then
+		systemctl enable "$unit" || true
+	fi
+	if [ -d /run/systemd/system ] && [ -e /etc/stvor-agent/token ]; then
+		systemctl try-restart "$unit" || true
+	fi
+	;;
+abort-upgrade | abort-remove | abort-deconfigure) ;;
+esac
+
+exit 0

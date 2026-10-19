@@ -31,7 +31,7 @@
 - [x] Task 15: SA — интеграционный тест адаптера с настоящим `cream` и фиктивным расширением
 
 Волна C — упаковка, выпуск, чистка, приёмка:
-- [ ] Task 16: SA — упаковка nfpm `.deb` amd64/arm64, сопровождающие скрипты, проверка воспроизводимости
+- [x] Task 16: SA — упаковка nfpm `.deb` amd64/arm64, сопровождающие скрипты, проверка воспроизводимости
 - [ ] Task 17: SA — CI и release-please 4.0.0, dispatch бампа пина в CE
 - [ ] Task 18: SA — документация (README, SECURITY, portal-labels-api, AGENTS/CLAUDE, индекс, STATUS)
 - [ ] Task 19: SA — удаление bash-кода, юнитов, тестов и инструментов 3.x; сверка файлов-образцов с CE
@@ -389,6 +389,11 @@ cream 1.0.0).
   shellcheck сопровождающих скриптов; сценарии скриптов на подменном `systemctl` (есть/нет systemd, есть/нет
   токена, `remove`/`purge`) — перенос идей `tests/test-package.sh`.
 - **Готово:** `make ci` (с `repro`).
+- **Исполнено:** nfpm v2.47.0 воспроизводим (`make repro-check` — две сборки с пустыми кешами, равные суммы), откат
+  на `tools/build-deb.sh` не нужен. Проверки пакета — не Go-тест, а `tools/check-deb.sh` (состав, поля, лицензия,
+  статический ELF) и `tools/check-deb-live.sh` (живые `dpkg -i/-r/--purge` от root с поддельным `systemctl`) в
+  `debian:13` внутри `make deb`, как в cream; `make repro` назван `make repro-check`. `postinst` включает юнит только при
+  первой установке — обновление не отменяет `disable` оператора. Пакеты 3.x — в `dist/legacy/`.
 
 ### Task 17: SA — CI и release-please 4.0.0
 - **Репозиторий:** SA. **Зависит:** 16 (имена целей и артефактов — заранее зафиксированы здесь: `make ci`, `make deb`,

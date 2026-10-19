@@ -372,7 +372,8 @@ S проверяет ответ строго (`schema == 1`, ключи и зн�
   служба не стартует — «ждёт `enable`»), `After=`/`Wants=network-online.target`, `Restart=always`, `RestartSec=10`,
   `KillMode=mixed`, `TimeoutStopSec=120` (§5.8), `EnvironmentFile=-/etc/cream/stvor-agent/config`, `StateDirectory=stvor-agent`,
   `StateDirectoryMode=0700`, hardening из §6, `WantedBy=multi-user.target`.
-- Сопровождающие скрипты: `postinst` — `daemon-reload` (если systemd запущен), `enable` юнита; при наличии токена —
+- Сопровождающие скрипты: `postinst` — `daemon-reload` (если systemd запущен), `enable` юнита при первой установке
+  (обновление не отменяет `disable` оператора); при наличии токена —
   `try-restart` (обновление пакета). `prerm remove` — `disable --now`. `postrm purge` — удалить `/etc/stvor-agent` и
   `/var/lib/stvor-agent`. Сборка образа (нет systemd) — только ссылка `enable`, ничего не стартует.
 

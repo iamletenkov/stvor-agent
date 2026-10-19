@@ -6,6 +6,10 @@
 
 GO_IMAGE       ?= golang:1.26.9
 GOLANGCI_IMAGE ?= golangci/golangci-lint:v2.14.0
+NFPM_IMAGE     ?= goreleaser/nfpm:v2.47.0
+DEBIAN_IMAGE   ?= debian:13
+SHELLCHECK_IMAGE ?= koalaman/shellcheck:v0.11.0
+GOVULNCHECK    ?= golang.org/x/vuln/cmd/govulncheck@v1.8.0
 MODULE         := github.com/iamletenkov/stvor-agent
 VERSION        ?= $(shell tr -d '[:space:]' < VERSION 2>/dev/null || echo dev)
 ARCHES         ?= amd64 arm64
@@ -13,6 +17,25 @@ ARCHES         ?= amd64 arm64
 COMMIT         ?= $(shell git rev-parse --short=12 HEAD 2>/dev/null)
 LDFLAGS        := -s -w -buildid= -X $(MODULE)/internal/version.Version=$(VERSION) \
 	-X $(MODULE)/internal/version.Commit=$(COMMIT)
+
+# Пакет (спека §9.1, §9.2): версия .deb = VERSION; mtime в пакете — время коммита.
+DEB_VERSION    ?= $(VERSION)
+SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct 2>/dev/null || echo 0)
+# ARCH пусто — оба .deb; RELEASE_DIR — куда кладутся .deb и SHA256SUMS.
+ARCH           ?=
+DEB_ARCHES      = $(or $(ARCH),$(ARCHES))
+RELEASE_DIR    ?= dist
+# Живой dpkg -i/-r/--purge в debian (tools/check-deb-live.sh); repro-check — без него.
+DEB_LIVE       ?= 1
+# Подкаталог .cache/ под кеш сборки Go: repro-check собирает в разных пустых кешах.
+GOCACHE_DIR    ?= go-build
+# Замок тяжёлых прогонов — общий с cream: на хосте одна тяжёлая сборка за раз.
+# Цель под замком (STVOR_AGENT_HEAVY_HELD) зовёт другую такую же без взаимной блокировки.
+HEAVY_LOCK     ?= /tmp/cream-heavy.lock
+HEAVY           = $(if $(STVOR_AGENT_HEAVY_HELD),,flock $(HEAVY_LOCK) env STVOR_AGENT_HEAVY_HELD=1)
+# Сопровождающие скрипты пакета и инструменты упаковки — под shellcheck в make lint.
+SH_FILES       := packaging/postinst packaging/prerm packaging/postrm \
+	tools/check-deb.sh tools/check-deb-live.sh tools/repro-check.sh
 
 UID := $(shell id -u)
 GID := $(shell id -g)
@@ -22,12 +45,16 @@ GID := $(shell id -g)
 DOCKER_RUN = docker run --rm -u $(UID):$(GID) \
 	-v "$(CURDIR):/src" -w /src \
 	-v "$(CURDIR)/.cache:/cache" \
-	-e HOME=/tmp -e GOCACHE=/cache/go-build -e GOMODCACHE=/cache/mod \
-	-e GOLANGCI_LINT_CACHE=/cache/golangci -e GOFLAGS=-buildvcs=false
+	-e HOME=/tmp -e GOCACHE=/cache/$(GOCACHE_DIR) -e GOMODCACHE=/cache/mod \
+	-e GOLANGCI_LINT_CACHE=/cache/golangci -e GOFLAGS=-buildvcs=false \
+	-e SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH)
 GO = $(DOCKER_RUN) $(GO_IMAGE)
+# Go-файлы модуля без кэшей (.cache/: модули, govulncheck) и dist/: gofmt по «.» зашёл бы в зависимости.
+GO_FILES = find . \( -path ./.cache -o -path ./dist -o -path ./.scratchpad -o -path ./.git \) -prune -o -name '*.go' -print
 
 .DEFAULT_GOAL := help
-.PHONY: help cache build build-all test test-integration lint fmt legacy-check legacy-deb ci clean
+.PHONY: help cache build build-all test test-integration lint fmt deb deb-unlocked repro-check vuln \
+	legacy-check legacy-deb ci ci-unlocked clean
 
 help: ## список целей
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-17s %s\n", $$1, $$2}'
@@ -67,25 +94,60 @@ test-integration: cache ## адаптер teleport против настояще
 	test/integration/run.sh "$$deb" .cache/it/teleport.test
 
 fmt: cache ## gofmt -w по всему модулю
-	$(GO) gofmt -w .
+	$(GO) sh -c "$(GO_FILES) | xargs -r gofmt -w"
 
 # Карта docs/test-map.md сверяется со списком Go-тестов (go test -list) —
 # tools/check-test-map.sh: имена из карты существуют, пустых строк нет.
-lint: cache ## gofmt -l, go vet, golangci-lint, сверка docs/test-map.md с Go-тестами
-	@out="$$($(GO) gofmt -l .)"; if [ -n "$$out" ]; then echo "gofmt: не отформатированы (make fmt):"; echo "$$out"; exit 1; fi
+lint: cache ## gofmt -l, go vet, golangci-lint, сверка docs/test-map.md, shellcheck скриптов пакета
+	@out="$$($(GO) sh -c "$(GO_FILES) | xargs -r gofmt -l")"; if [ -n "$$out" ]; then echo "gofmt: не отформатированы (make fmt):"; echo "$$out"; exit 1; fi
 	$(GO) go vet ./...
 	$(GO) go vet -tags integration ./internal/teleport
 	$(DOCKER_RUN) $(GOLANGCI_IMAGE) golangci-lint run ./...
 	$(GO) go test -list . ./... > .cache/go-test-list.txt
 	tools/check-test-map.sh .cache/go-test-list.txt
+	docker run --rm -v "$(CURDIR):/mnt" -w /mnt $(SHELLCHECK_IMAGE) -S style $(SH_FILES)
+
+# Оба .deb (или один — ARCH=amd64|arm64) из готовых dist/stvor-agent-linux-*: nfpm,
+# затем в debian — состав и поля (tools/check-deb.sh) и живые dpkg -i/-r/--purge
+# от root (tools/check-deb-live.sh, корень репозитория — только чтение).
+deb: ## dist/stvor-agent_<v>_<arch>.deb (ARCH=amd64|arm64, по умолчанию оба) и SHA256SUMS (под замком)
+	$(HEAVY) $(MAKE) --no-print-directory deb-unlocked
+
+deb-unlocked: build-all
+	@mkdir -p $(RELEASE_DIR)
+	@set -e; for a in $(DEB_ARCHES); do \
+		echo "== nfpm stvor-agent_$(DEB_VERSION)_$$a.deb"; \
+		$(DOCKER_RUN) -e ARCH=$$a -e DEB_VERSION=$(DEB_VERSION) $(NFPM_IMAGE) \
+			package -f packaging/nfpm.yaml -p deb -t $(RELEASE_DIR)/stvor-agent_$(DEB_VERSION)_$$a.deb; \
+		$(DOCKER_RUN) $(DEBIAN_IMAGE) sh tools/check-deb.sh $(DEB_VERSION) $$a $(RELEASE_DIR); \
+		if [ "$(DEB_LIVE)" = 1 ]; then \
+			docker run --rm -v "$(CURDIR):/src:ro" -w /src $(DEBIAN_IMAGE) \
+				sh tools/check-deb-live.sh $(DEB_VERSION) $$a $(RELEASE_DIR); \
+		fi; \
+	done
+	cd $(RELEASE_DIR) && sha256sum -- $(foreach a,$(DEB_ARCHES),stvor-agent_$(DEB_VERSION)_$(a).deb) > SHA256SUMS
+	@cat $(RELEASE_DIR)/SHA256SUMS
+
+repro-check: ## две сборки обоих .deb с одним SOURCE_DATE_EPOCH и пустыми кешами — sha256 совпадают (под замком)
+	$(HEAVY) env MAKE="$(MAKE)" sh tools/repro-check.sh
+
+# go run …@версия собирает govulncheck вне модуля: go.mod/go.sum не меняются,
+# модули инструмента — в отдельном .cache/vuln-mod.
+vuln: cache ## govulncheck по модулю (версия закреплена в GOVULNCHECK)
+	$(DOCKER_RUN) -e GOMODCACHE=/cache/vuln-mod -e GOFLAGS="-buildvcs=false -mod=mod" \
+		$(GO_IMAGE) go run $(GOVULNCHECK) ./...
 
 legacy-check: ## 3.x: shellcheck и tests/test-*.sh (tools/check.sh)
 	tools/check.sh
 
-legacy-deb: ## 3.x: dist/bisquite-teleport-agent_<версия>_all.deb и dist/SHA256SUMS
-	tools/build-deb.sh
+# В dist/legacy/: свой SHA256SUMS 3.x не затирает SHA256SUMS пакетов 4.x в dist/.
+legacy-deb: ## 3.x: dist/legacy/bisquite-teleport-agent_<версия>_all.deb и SHA256SUMS
+	tools/build-deb.sh --out dist/legacy
 
-ci: lint test build-all legacy-check legacy-deb ## всё, что гоняет CI: Go (lint, test, build-all) и проверки 3.x
+ci: ## всё, что гоняет CI: Go (lint, test, build-all, deb, repro-check) и проверки 3.x (под замком)
+	$(HEAVY) $(MAKE) --no-print-directory ci-unlocked
+
+ci-unlocked: lint test deb-unlocked repro-check legacy-check legacy-deb
 
 clean: ## удалить dist/ (кэш .cache/ сохраняется)
 	rm -rf dist
