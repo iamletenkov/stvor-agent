@@ -2,9 +2,9 @@
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
   "packages": {
     ".": {
-      "release-type": "simple",
-      "package-name": "bisquite-teleport-agent",
-      "version-file": "VERSION",
+      "release-type": "go",
+      "package-name": "stvor-agent",
+      "release-as": "4.0.0",
       "changelog-path": "CHANGELOG.md",
       "include-component-in-tag": false,
       "include-v-in-tag": true,
