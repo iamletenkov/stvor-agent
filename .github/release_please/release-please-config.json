@@ -4,15 +4,26 @@
     ".": {
       "release-type": "go",
       "package-name": "stvor-agent",
-      "release-as": "4.0.0",
       "changelog-path": "CHANGELOG.md",
       "include-component-in-tag": false,
       "include-v-in-tag": true,
       "changelog-sections": [
-        { "type": "feat", "section": "Добавлено" },
-        { "type": "fix", "section": "Исправлено" },
-        { "type": "perf", "section": "Производительность" },
-        { "type": "revert", "section": "Отменено" }
+        {
+          "type": "feat",
+          "section": "Добавлено"
+        },
+        {
+          "type": "fix",
+          "section": "Исправлено"
+        },
+        {
+          "type": "perf",
+          "section": "Производительность"
+        },
+        {
+          "type": "revert",
+          "section": "Отменено"
+        }
       ]
     }
   }
