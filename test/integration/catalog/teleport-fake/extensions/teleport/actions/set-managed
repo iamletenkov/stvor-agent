@@ -1,0 +1,12 @@
+#!/bin/sh
+# Фиктивное действие: argv построчно — в set-managed.argv, ответ — по файлам
+# /var/lib/teleport-fake/set-managed.*
+set -eu
+d=/var/lib/teleport-fake
+n=set-managed
+mkdir -p "$d"
+: > "$d/$n.argv"
+for a in "$@"; do printf '%s\n' "$a" >> "$d/$n.argv"; done
+if [ -f "$d/$n.sleep" ]; then sleep "$(cat "$d/$n.sleep")"; fi
+if [ -f "$d/$n.out" ]; then cat "$d/$n.out"; fi
+exit "$(cat "$d/$n.code" 2>/dev/null || echo 0)"

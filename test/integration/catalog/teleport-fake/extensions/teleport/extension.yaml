@@ -1,0 +1,16 @@
+schema: cream/v1
+name: teleport
+version: 4.0.0-fake
+summary: фиктивное расширение teleport для интеграционного теста stvor-agent
+cream: ">=1.0.0"
+platform: {family: deb, arch: [amd64, arm64]}
+# Действия отдают то, что тест положил в /var/lib/teleport-fake/<действие>.{out,code,sleep}:
+# так один каталог проверяет и файлы-образцы, и код 1, и не-JSON, и долгий сон.
+# managed-status — timeout 5s, чтобы сценарий «таймаут cream» (79) не ждал 15 с.
+hooks:
+  install: {}
+  remove: {}
+actions:
+  managed-status: {summary: "управляемые метки и состояние узла", lock: none, output: json, timeout: 5s}
+  set-managed: {summary: "пишет управляемые метки и перезапускает агента", args: free, lock: exclusive, output: json, timeout: 90s}
+  hold: {summary: "держит блокировку teleport до файла release", lock: exclusive, timeout: 2m}
