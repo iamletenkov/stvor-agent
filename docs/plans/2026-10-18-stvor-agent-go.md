@@ -32,7 +32,7 @@
 
 Волна C — упаковка, выпуск, чистка, приёмка:
 - [x] Task 16: SA — упаковка nfpm `.deb` amd64/arm64, сопровождающие скрипты, проверка воспроизводимости
-- [ ] Task 17: SA — CI и release-please 4.0.0, dispatch бампа пина в CE
+- [x] Task 17: SA — CI и release-please 4.0.0, dispatch бампа пина в CE
 - [x] Task 18: SA — документация (README, SECURITY, portal-labels-api, AGENTS/CLAUDE, индекс, STATUS)
 - [ ] Task 19: SA — удаление bash-кода, юнитов, тестов и инструментов 3.x; сверка файлов-образцов с CE
 - [ ] Task 20: SA — сквозной тест в контейнере Debian 12 с systemd (спека §15.3)
@@ -413,6 +413,15 @@ cream 1.0.0).
   отчёте; цель `make actionlint` добавляет Task 19); dry-run release-please (`release-please release-pr --dry-run`
   в контейнере) показывает 4.0.0.
 - **Готово:** actionlint чистый (вывод в отчёте), `make ci` зелёный; job `check` проходит на черновом PR.
+- **Исполнено:** 4.0.0 задан `"release-as": "4.0.0"` в конфиге (не зависит от заголовка squash-коммита); job
+  `check` краснеет, когда тег `v<release-as>` уже есть, — `release-as` убирается PR-ом сразу после выхода 4.0.0.
+  Манифест остаётся `3.1.0`: 3.1.1 вышел тегом вне `main`, с ним release-please не нашёл бы коммит релиза в истории.
+  Jobs `check` (gitleaks, actionlint по digest, `make ci`, checkout CE в `.cache/cream-extensions`), `vuln`,
+  `integration` (пин пуст — пропуск), `release-please`, `release-artifacts` (`make deb VERSION=<тег без v>`,
+  сверка `version --short` и `SHA256SUMS`; ручной запуск `tag` + `upload`, только 4.x), `dispatch-extensions`
+  (под `EXTENSIONS_BUMP_ENABLED`). **`VERSION` не удалён** — его читают `tools/build-deb.sh` и
+  `tests/test-package.sh` 3.x (рулинг 5), удаление перенесено в Task 19. Dry-run release-please локально невозможен:
+  CLI читает конфиг из ветки на GitHub — проверка на черновом PR / после слияния.
 
 ### Task 18: SA — документация
 - **Репозиторий:** SA. **Зависит:** волна A (поведение), 16/17 — только имена. **Волна:** C1.
@@ -435,7 +444,8 @@ cream 1.0.0).
   (2) соседняя копия CE (`CREAM_EXTENSIONS_DIR`, по умолчанию `../cream-extensions`) несёт тот же набор в
   `extensions/debian/teleport/tests/fixtures/`; нет копии — локально skip с предупреждением, в CI копию даёт
   checkout по ref (Task 17).
-- **Файлы:** удаляемые, `Makefile`, `lefthook.yml`, `tools/check-contract-fixtures.sh`,
+- **Файлы:** удаляемые (и `VERSION` — перенесён из Task 17; `Makefile` без него берёт версию `dev`, а `make deb`
+  локально — `VERSION=<v>`), `Makefile`, `lefthook.yml`, `tools/check-contract-fixtures.sh`,
   `tools/contract-fixtures.sha256`.
 - **Тесты первыми:** `check-contract-fixtures.sh` красный при изменённом байте образца или расхождении с соседней
   копией, skip без копии, зелёный на пине (вывод в отчёте).
