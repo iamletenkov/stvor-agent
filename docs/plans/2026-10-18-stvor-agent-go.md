@@ -33,7 +33,7 @@
 Волна C — упаковка, выпуск, чистка, приёмка:
 - [x] Task 16: SA — упаковка nfpm `.deb` amd64/arm64, сопровождающие скрипты, проверка воспроизводимости
 - [ ] Task 17: SA — CI и release-please 4.0.0, dispatch бампа пина в CE
-- [ ] Task 18: SA — документация (README, SECURITY, portal-labels-api, AGENTS/CLAUDE, индекс, STATUS)
+- [x] Task 18: SA — документация (README, SECURITY, portal-labels-api, AGENTS/CLAUDE, индекс, STATUS)
 - [ ] Task 19: SA — удаление bash-кода, юнитов, тестов и инструментов 3.x; сверка файлов-образцов с CE
 - [ ] Task 20: SA — сквозной тест в контейнере Debian 12 с systemd (спека §15.3)
 - [ ] Task 21: выпуск SA 4.0.0 и пин в обёртке CE (внешнее действие — с «да» владельца)
