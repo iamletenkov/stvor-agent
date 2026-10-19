@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -34,6 +35,12 @@ type scenario struct {
 	StdoutSize int    `json:"stdout_size"` // print this many bytes of 'x'
 	Stderr     string `json:"stderr"`
 	Hang       bool   `json:"hang"` // start a grandchild in the group and sleep
+	// OwnGroup (with Hang) behaves like the real cream: the grandchild (the
+	// action) runs in a process group of its own, and SIGTERM makes the fake
+	// kill that group and exit. SIGKILL of the fake would orphan it.
+	OwnGroup bool `json:"own_group"`
+	// IgnoreTerm (with Hang) ignores SIGTERM: only SIGKILL stops the fake.
+	IgnoreTerm bool `json:"ignore_term"`
 }
 
 // record is what the fake cream saw.
@@ -74,12 +81,27 @@ func fakeCream() int {
 	in, _ := io.ReadAll(os.Stdin)
 	rec.Stdin = string(in)
 	rec.Dir, _ = os.Getwd()
+	if sc.IgnoreTerm {
+		signal.Ignore(syscall.SIGTERM)
+	}
 	if sc.Hang {
 		child := exec.Command(os.Args[0], "--fake-sleeper")
+		if sc.OwnGroup {
+			child.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+		}
 		if err := child.Start(); err != nil {
 			return 122
 		}
 		rec.GrandchildPID = child.Process.Pid
+		if sc.OwnGroup {
+			term := make(chan os.Signal, 1)
+			signal.Notify(term, syscall.SIGTERM)
+			go func() {
+				<-term
+				_ = syscall.Kill(-child.Process.Pid, syscall.SIGKILL)
+				os.Exit(143)
+			}()
+		}
 	}
 	out, _ := json.Marshal(rec)
 	if err := os.WriteFile(filepath.Join(dir, "record.json"), out, 0o600); err != nil {
@@ -393,6 +415,43 @@ func TestTimeoutKillsProcessGroup(t *testing.T) {
 				t.Fatalf("err = %v, want ErrTimeout", err)
 			}
 			if el := time.Since(start); el > 10*time.Second {
+				t.Errorf("вызов длился %v", el)
+			}
+			rec := readRecord(t, dir)
+			if rec.GrandchildPID == 0 {
+				t.Fatal("внук не запущен")
+			}
+			waitDead(t, rec.GrandchildPID)
+		})
+	}
+}
+
+// TestTimeoutStopsCream: cream runs the action in a process group of its own
+// and kills it on SIGTERM (cream docs/cli.md, «Поведение процесса»), so on
+// timeout the adapter sends SIGTERM to the group of cream and SIGKILL only
+// after KillGrace — a SIGKILL first would orphan the action (found by the
+// integration test against the real cream, plan Task 15).
+func TestTimeoutStopsCream(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		sc   scenario
+	}{
+		{"cream убивает группу действия по SIGTERM", scenario{Hang: true, OwnGroup: true}},
+		{"cream не реагирует на SIGTERM — SIGKILL после KillGrace", scenario{Hang: true, IgnoreTerm: true}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			c, dir := fake(t, tc.sc)
+			c.StatusTimeout = 300 * time.Millisecond
+			c.KillGrace = 500 * time.Millisecond
+			start := time.Now()
+			_, err := c.Status(context.Background())
+			if !errors.Is(err, teleport.ErrTimeout) {
+				t.Fatalf("err = %v, want ErrTimeout", err)
+			}
+			if el := time.Since(start); el > 5*time.Second {
 				t.Errorf("вызов длился %v", el)
 			}
 			rec := readRecord(t, dir)

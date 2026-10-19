@@ -20,11 +20,16 @@ const (
 	DefaultSetTimeout = 90 * time.Second
 	// DefaultActionsTimeout bounds `cream actions teleport --json`.
 	DefaultActionsTimeout = 15 * time.Second
+	// DefaultKillGrace is the SIGTERM→SIGKILL interval on timeout. cream runs
+	// the action in a process group of its own and, on SIGTERM, gives it
+	// 10 s between its own SIGTERM and SIGKILL (cream internal/runner,
+	// DefaultGrace); killing cream sooner orphans the action.
+	DefaultKillGrace = 15 * time.Second
 	// setLockTimeout is the --lock-timeout of set-managed.
 	setLockTimeout = "20s"
-	// waitDelay is how long Wait waits for the pipes after the process group
-	// was killed or the action exited leaving a descendant with stdout open.
-	waitDelay = 5 * time.Second
+	// pipeDelay is how long Wait waits for stdout after cream exited leaving
+	// a descendant with the pipe open.
+	pipeDelay = 5 * time.Second
 )
 
 // creamEnv is the whole environment of cream: nothing of the agent's own
@@ -54,7 +59,8 @@ var (
 //	cream actions teleport --json
 //
 // argv as a list, no shell, the environment exactly creamEnv(), stdin /dev/null,
-// cwd "/", its own process group killed whole on timeout. Both actions are
+// cwd "/", its own process group. On timeout the group gets SIGTERM — cream
+// then stops the action, whose group is its own — and SIGKILL after KillGrace. Both actions are
 // `output: json` and are called without --json, so stdout is the action's
 // object as is (cream §7.2). Zero durations take the defaults.
 type CreamTeleport struct {
@@ -62,6 +68,8 @@ type CreamTeleport struct {
 	StatusTimeout  time.Duration
 	SetTimeout     time.Duration
 	ActionsTimeout time.Duration
+	// KillGrace is the SIGTERM→SIGKILL interval on timeout (zero — DefaultKillGrace).
+	KillGrace time.Duration
 	// Stderr receives the stderr of cream (its messages and the action's log);
 	// nil discards it.
 	Stderr io.Writer
@@ -77,6 +85,7 @@ func NewCream(path string) *CreamTeleport {
 		StatusTimeout:  DefaultStatusTimeout,
 		SetTimeout:     DefaultSetTimeout,
 		ActionsTimeout: DefaultActionsTimeout,
+		KillGrace:      DefaultKillGrace,
 	}
 }
 
@@ -196,13 +205,27 @@ func (c *CreamTeleport) run(ctx context.Context, timeout time.Duration, args ...
 		cmd.Stderr = c.Stderr
 	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	grace := orDefault(c.KillGrace, DefaultKillGrace)
+	var killTimer *time.Timer
 	cmd.Cancel = func() error {
-		// The whole group: cream, the action and whatever the action started.
-		return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		// SIGTERM, not SIGKILL: the action sits in a group of its own that
+		// only cream knows and kills on SIGTERM. SIGKILL of the group of cream
+		// after grace is the backstop for a cream that does not stop.
+		pgid := cmd.Process.Pid
+		killTimer = time.AfterFunc(grace, func() { _ = syscall.Kill(-pgid, syscall.SIGKILL) })
+		return syscall.Kill(-pgid, syscall.SIGTERM)
 	}
-	cmd.WaitDelay = waitDelay
+	// WaitDelay bounds both waits of Wait: cream after Cancel (it must outlast
+	// grace, or Wait's own SIGKILL of cream would come first) and stdout held
+	// open by a descendant after cream exited.
+	cmd.WaitDelay = grace + pipeDelay
 
 	err := cmd.Run()
+	if killTimer != nil {
+		killTimer.Stop()
+		// Leftovers in the group of cream that outlived it.
+		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+	}
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		if errors.Is(ctxErr, context.DeadlineExceeded) {
 			return 0, nil, fmt.Errorf("%w %s: %w", ErrTimeout, timeout, ctxErr)
