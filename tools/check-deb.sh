@@ -6,7 +6,7 @@
 # (Package, Version, Architecture, Depends, no Pre-Depends/Recommends), the
 # maintainer scripts and the unit equal to packaging/, copyright carrying the
 # text of LICENSE, an ELF binary of ARCH that is static and, on the host
-# architecture, prints the version. Nothing of 3.x (/etc/bisquite, bisquite-*).
+# architecture, prints the version. The exact list leaves no room for 3.x files or /etc.
 set -eu
 
 version="$1" arch="$2" dir="$3"
@@ -44,9 +44,6 @@ if awk '$2 != "root/root"' "$work/list" | grep -q .; then
 fi
 if awk '$1 ~ /^d/ && $1 != "drwxr-xr-x"' "$work/list" | grep -q .; then
 	bad "$deb: каталог не 0755"
-fi
-if grep -Eq 'bisquite|/etc/' "$work/list"; then
-	bad "$deb: в составе следы 3.x или /etc: $(grep -E 'bisquite|/etc/' "$work/list" | tr '\n' ' ')"
 fi
 
 field() { dpkg-deb -f "$deb" "$1"; }

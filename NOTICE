@@ -1,13 +1,11 @@
-bisquite-teleport-agent Notice
-==============================
+stvor-agent Notice
+==================
 
 Copyright (c) 2026 Letenkov Maksim
 
-bisquite-teleport-agent is distributed under the PolyForm Noncommercial License 1.0.0 with the required attribution notices found in `LICENSE`. Commercial use requires a separate license from Letenkov Maksim (letenkovmaksim@yandex.ru).
-
-`lib/bisquite-conf` is a copy of the settings library of bisquite-extensions (https://github.com/iamletenkov/bisquite-extensions), same author, same license.
+stvor-agent is distributed under the PolyForm Noncommercial License 1.0.0 with the required attribution notices found in `LICENSE`. Commercial use requires a separate license from Letenkov Maksim (letenkovmaksim@yandex.ru).
 
 Third-Party Components
 ----------------------
 
-The package bundles no third-party code. At run time it uses Teleport (https://goteleport.com), installed separately by the operator; its license applies to the Teleport binary.
+The binary statically links the Go standard library and runtime (BSD-3-Clause, The Go Authors). At run time it uses cream and its `teleport` extension, installed separately; Teleport (https://goteleport.com) is installed by that extension, and its license applies to the Teleport binary.

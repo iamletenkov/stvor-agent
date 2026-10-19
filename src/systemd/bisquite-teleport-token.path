@@ -1,9 +1,0 @@
-[Unit]
-Description=Scrub the Teleport join token once the agent has an identity
-
-[Path]
-PathExists=/var/lib/teleport/host_uuid
-Unit=bisquite-teleport-token.service
-
-[Install]
-WantedBy=paths.target

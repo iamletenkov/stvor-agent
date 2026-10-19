@@ -1,8 +1,0 @@
-[Unit]
-Description=Republish Teleport apps after a change in apps.d
-# Nothing to republish until the agent runs; `join` renders on its own.
-ConditionPathExists=/etc/teleport.yaml
-
-[Service]
-Type=oneshot
-ExecStart=/bin/sh -c 'systemctl is-active --quiet teleport.service && systemctl reload teleport.service || /usr/sbin/bisquite-teleport render'

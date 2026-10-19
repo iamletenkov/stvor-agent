@@ -202,23 +202,21 @@ cream run teleport managed-status  # то, что видит агент (JSON)
 
 Контракт `/robot-api/v1/labels` не изменился. `bisquite-teleport-agent` 3.1.x поддерживается, пока
 портал Stvor не перейдёт на 4.x (он пинит 3.1.x со своего зеркала); 3.1.1 — исправление безопасности
-(см. [SECURITY.md](SECURITY.md#311-версия-кластера-в-арифметике-bash)). Bash-код 3.x пока лежит в
-репозитории (`src/`, `lib/`, `debian/`, `tests/`) и удаляется задачей 19
-[плана](docs/plans/2026-10-18-stvor-agent-go.md).
+(см. [SECURITY.md](SECURITY.md#311-версия-кластера-в-арифметике-bash)). Bash-код 3.x из `main` удалён
+(задача 19 [плана](docs/plans/2026-10-18-stvor-agent-go.md)); он живёт в тегах `v3.*`.
 
 ## Разработка
 
 Go на хосте не нужен: всё идёт в контейнере `golang:1.26.9` через `make` (`make help` — список целей).
 
 ```bash
-make lint              # gofmt, go vet, golangci-lint, сверка docs/test-map.md, shellcheck скриптов пакета
+make lint              # gofmt, go vet, golangci-lint, docs/test-map.md, shellcheck, actionlint, образцы контракта
 make test              # go test -race ./...
 make test-integration  # адаптер teleport против настоящего cream в debian:12 (пин test/integration/cream-pin.env)
 make ci                # всё, что гоняет CI (под общим замком тяжёлых прогонов)
-make deb               # dist/stvor-agent_<версия>_{amd64,arm64}.deb и dist/SHA256SUMS (ARCH=amd64 — один)
+make deb VERSION=4.0.0 # dist/stvor-agent_<версия>_{amd64,arm64}.deb и dist/SHA256SUMS (ARCH=amd64 — один)
 make repro-check       # две сборки .deb с пустыми кешами — равные sha256
 make vuln              # govulncheck по модулю
-make legacy-deb        # 3.x: dist/legacy/bisquite-teleport-agent_<версия>_all.deb
 ```
 
 Пакет 4.x собирает nfpm (`goreleaser/nfpm:v2.47.0`, `packaging/nfpm.yaml`): `make repro-check`
@@ -228,8 +226,10 @@ make legacy-deb        # 3.x: dist/legacy/bisquite-teleport-agent_<версия>
 
 Тесты Go — table-driven; внешнее (файлы, `systemctl`, `cream`, портал, часы) подменяется интерфейсами:
 портал — `httptest.NewTLSServer`, `cream` — поддельный процесс-помощник. Перенос проверок
-`tests/test-labels.sh` 3.x в Go — [docs/test-map.md](docs/test-map.md). Проверки 3.x (`make legacy-check`:
-shellcheck и `tests/test-*.sh` на подменённом корне) живут до удаления bash-кода.
+`tests/test-labels.sh` 3.x в Go — [docs/test-map.md](docs/test-map.md) (итоговая). Файлы-образцы контракта с
+расширением `teleport` (`internal/teleport/testdata/*.json`) сверяет `make contract-fixtures` (входит в `make lint`):
+набор равен пину `tools/contract-fixtures.sha256` и копии в соседнем `cream-extensions` (`CREAM_EXTENSIONS_DIR`,
+по умолчанию `../cream-extensions`; без копии локально — пропуск с предупреждением, в CI — ошибка).
 
 ### Как выпустить версию
 

@@ -1,8 +1,8 @@
 name: CI and Release
 
-# Проверки — те же make-цели, что запускают руками: make ci (Go: lint, test,
-# build-all, deb, repro-check; пока bash-агент 3.x в репозитории — и его
-# legacy-check, legacy-deb), make vuln, make test-integration. Go, nfpm,
+# Проверки — те же make-цели, что запускают руками: make ci (lint с actionlint
+# и сверкой образцов контракта, test, build-all, deb, repro-check), make vuln,
+# make test-integration. Go, nfpm,
 # линтеры — в контейнерах с закреплёнными образами (Makefile), CI и локальный
 # прогон не расходятся.
 #
@@ -73,13 +73,6 @@ jobs:
           docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.30.1
           dir /repo --config /repo/.gitleaks.toml --redact --no-banner -v
 
-      # Сами workflow — actionlint с образом, закреплённым по digest.
-      - name: Actionlint
-        run: >-
-          docker run --rm -v "$PWD:/repo" -w /repo
-          rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
-          -no-color
-
       # release-as в конфиге release-please задаёт номер первого Go-выпуска
       # (4.0.0; по одним коммитам feat вышло бы 3.2.0). После выхода этой
       # версии его надо убрать, иначе release-please снова предложит тот же
@@ -101,19 +94,10 @@ jobs:
           path: .cache/cream-extensions
           persist-credentials: false
 
-      # shellcheck и lintian — для проверок 3.x (tools/check.sh требует
-      # shellcheck при CI=1); уходят вместе с bash-агентом.
-      - name: Install tools (3.x)
-        run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends shellcheck lintian
-
+      # CI=true (по умолчанию в Actions): без копии cream-extensions сверка
+      # образцов контракта — ошибка, а не пропуск.
       - name: make ci
         run: make ci
-        env:
-          CI: "1"
-
-      # Сведения, а не ворота: пакет 3.x собран dpkg-deb без debhelper.
-      - name: lintian 3.x (informational)
-        run: lintian --no-tag-display-limit dist/legacy/*.deb || true
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -121,7 +105,6 @@ jobs:
           path: |
             dist/*.deb
             dist/SHA256SUMS
-            dist/legacy/
           retention-days: 7
 
   vuln:
@@ -197,7 +180,7 @@ jobs:
       TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
       UPLOAD: ${{ needs.release-please.outputs.release_created == 'true' || inputs.upload }}
     steps:
-      # Только 4.x и новее: ассеты 3.x (bisquite-teleport-agent_*_all.deb)
+      # Только 4.x и новее: ассеты 3.x (пакет *_all.deb прежнего имени)
       # не перевыпускаются (спека §14), а цели make deb на тегах 3.x нет.
       - name: Check tag
         env:
@@ -275,7 +258,7 @@ jobs:
   #
   # Включается переменной репозитория EXTENSIONS_BUMP_ENABLED=true. Пока
   # перенацеленный agent-bump (план, Task 14) не слит в main cream-extensions,
-  # тамошний agent-bump ищет старый bisquite-teleport-agent_*_all.deb и упадёт,
+  # тамошний agent-bump ищет пакет 3.x (*_all.deb прежнего имени) и упадёт,
   # поэтому по умолчанию — предупреждение и пропуск; пин обёртки в пилотной
   # ветке ставится руками tools/agent-bump.sh.
   #

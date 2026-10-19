@@ -10,11 +10,13 @@
   cream-extensions; интеграционный тест адаптера с настоящим cream.
 - Task 16: `.deb` amd64/arm64 собирает nfpm, `make repro-check` — побайтно воспроизводимо.
 - Task 18: README, SECURITY, контракт портала, AGENTS/CLAUDE и индекс — под 4.x.
+- Task 19: bash 3.x удалён из дерева (код — в тегах `v3.*`); `make contract-fixtures` сверяет образцы контракта с
+  пином и с cream-extensions; `make actionlint` — в `make lint`.
 
 ## В работе / дальше
 1. Task 14 (CE: `apps.d` у `code-server`/`selkies`, удаление `teleport-agent`, `agent-bump`), Task 17 (CI и
    release-please 4.0.0).
-2. Task 19 — удаление bash 3.x и сверка файлов-образцов с CE; Task 20 — сквозной тест в Debian 12 с systemd.
+2. Task 20 — сквозной тест в Debian 12 с systemd.
 3. Task 21 — релиз 4.0.0 (только с «да» владельца), Task 22 — приёмка на `pve-robot-1`, Task 23 — `make ci`.
 4. Портал пинит 3.1.x и переходит на 4.x своим срезом по ADR-0030
    ([черновик](research/2026-10-18-stvor-adr-0030-draft.md)); `stvorhost` (3.0.1) не трогаем.
