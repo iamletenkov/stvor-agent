@@ -448,7 +448,7 @@ _conf_stored_secrets(){
 # last one), new keys are appended. Comments, blank lines and the order of
 # everything else stay. Atomic: temporary file in the same directory + mv.
 _conf_write(){
-    local domain="$1" dir file tmp mode=644 i j k s e fd="" rc=0
+    local domain="$1" dir file tmp mode=644 cur i j k s e fd="" rc=0
     dir="$(_conf_dir "$domain")"; file="$dir/config"
     if ! mkdir -p "$dir" || ! chmod 0755 "$dir"; then _conf_err "$domain: не создать $dir"; return 1; fi
     if command -v flock >/dev/null 2>&1 && exec {fd}<"$dir"; then
@@ -487,8 +487,10 @@ _conf_write(){
         # Never loosen: a file an operator closed to 0600 stays 0600.
         if _conf_stored_secrets; then
             mode=600
-        elif [[ -f "$file" ]] && (( (8#$(stat -c %a "$file") & 8#077) == 0 )); then
-            mode=600
+        else
+            # Octal digits before the arithmetic: (( )) evaluates a[$(cmd)].
+            cur="$(stat -c %a "$file" 2>/dev/null)" || cur=""
+            [[ "$cur" =~ ^[0-7]{3,4}$ ]] && (( (8#$cur & 8#077) == 0 )) && mode=600
         fi
         if tmp="$(mktemp "$dir/.config.XXXXXX")"; then
             if chmod "$mode" "$tmp" && printf '%s\n' "${out[@]}" > "$tmp" && mv -f "$tmp" "$file"; then

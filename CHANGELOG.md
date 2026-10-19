@@ -4,6 +4,25 @@
 release-please из Conventional Commits; 3.0.1 и старше написаны вручную в
 формате [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/).
 
+## [3.1.1](https://github.com/iamletenkov/stvor-agent/compare/v3.1.0...v3.1.1) (2026-10-19)
+
+
+### Безопасность
+
+* Версия кластера из ответа прокси (`server_version` в `/webapi/find`) больше
+  не попадает в арифметику bash непроверенной. Раньше значение вида
+  `a[$(команда)]` выполняло команду от root при `join` и на тике повтора
+  `join-retry` — достаточно ответа враждебного или скомпрометированного
+  узла по адресу `TELEPORT_PROXY`. Теперь версия проверяется сразу после извлечения:
+  только `X.Y.Z[-pre][+build]` с компонентами до 9 цифр, дальше идёт `X.Y.Z`;
+  иначе — «прокси назвал версию не по форме», join ждёт, тик повторяет.
+  Сравнение версий — только цифрами и в базе 10.
+* Числа из окружения (`BISQUITE_TELEPORT_JOIN_TIMEOUT`,
+  `BISQUITE_TELEPORT_RESTART_TIMEOUT`, `BISQUITE_TELEPORT_NOW`) проверяются
+  как целые до арифметики, иначе — отказ с именем переменной.
+* uid из `/etc/passwd`, права файлов из `stat`, счётчики из файлов состояния —
+  цифрами до арифметики и в базе 10.
+
 ## [3.1.0](https://github.com/iamletenkov/bisquite-teleport-agent/compare/v3.0.1...v3.1.0) (2026-10-14)
 
 

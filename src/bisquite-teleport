@@ -98,6 +98,7 @@ REG_SECRET="$ROOT$REG_SECRET_GUEST"
 # bound_keypair joining for agents (not only bots) appeared in Teleport 18.8.
 BOUND_KEYPAIR_MIN=18.8.0
 TELEPORT_BIN="${TELEPORT_BIN:-/usr/local/bin/teleport}"
+# Checked as an integer by env_int below, before any arithmetic.
 JOIN_TIMEOUT="${BISQUITE_TELEPORT_JOIN_TIMEOUT:-120}"
 MANAGED_BY=bisquite-teleport-agent
 # Static node label with the package version (VERSION next to this script,
@@ -151,6 +152,7 @@ RESTART_TRIES=3
 RESTART_PAUSE=900
 LABELS_LOCKED=0
 LABELS_TIMER=bisquite-teleport-labels.timer
+# Checked as an integer by env_int below, before any arithmetic.
 RESTART_TIMEOUT="${BISQUITE_TELEPORT_RESTART_TIMEOUT:-30}"
 # A join that waits for the network or the proxy. join-pending exists while
 # it waits (`since=`, `attempts=`, `last=`, `error=`) and is the condition of
@@ -167,6 +169,22 @@ warn(){ log "ВНИМАНИЕ: $*"; }
 die(){ log "ОШИБКА: $*"; exit 1; }
 
 need_root(){ [[ -n "$ROOT" || "$(id -u)" -eq 0 ]] || die "нужен root (sudo)"; }
+
+# Numbers from the environment meet bash arithmetic, and (( )) evaluates
+# a[$(cmd)] in its operand — a command. So each one is an integer of digits
+# (an optional minus: the tests shorten the lock wait with a negative join
+# timeout) before any arithmetic, and goes in as base 10.
+env_int(){ # env_int <VAR> [default] — VAR (or the default) as a base-10 integer, or die
+    local v="${!1:-${2-}}"
+    [[ "$v" =~ ^(-?)([0-9]{1,9})$ ]] || die "$1: ожидали целое число"
+    printf '%s' "$(( ${BASH_REMATCH[1]}10#${BASH_REMATCH[2]} ))"
+}
+JOIN_TIMEOUT="$(env_int BISQUITE_TELEPORT_JOIN_TIMEOUT 120)" || exit 1
+RESTART_TIMEOUT="$(env_int BISQUITE_TELEPORT_RESTART_TIMEOUT 30)" || exit 1
+if [[ -n "${BISQUITE_TELEPORT_NOW:-}" ]]; then
+    BISQUITE_TELEPORT_NOW="$(env_int BISQUITE_TELEPORT_NOW)" || exit 1
+fi
+
 # BISQUITE_TELEPORT_SYSTEMD=1|0 overrides the detection — the tests drive a
 # fake systemctl under a scratch root.
 has_systemd(){
@@ -246,6 +264,7 @@ read_decl(){
         warn "пропускаю $f: символическая ссылка"; return 1
     fi
     owner="$(stat -c %u "$f")"; mode="$(stat -c %a "$f")"
+    [[ "$mode" =~ ^[0-7]{3,4}$ ]] || { warn "пропускаю $f: права не прочитаны"; return 1; }
     if [[ -z "$ROOT" && "$owner" != 0 ]]; then
         warn "пропускаю $f: владелец не root"; return 1
     fi
@@ -466,7 +485,10 @@ cmd_os_logins(){
         passwd="$(getent passwd 2>/dev/null)" || passwd=""
     fi
     while IFS=: read -r name _ uid _ _ _ shell; do
-        [[ "$name" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,31}$ && "$uid" =~ ^[0-9]+$ ]] || continue
+        # The uid is checked as digits before the arithmetic: (( )) would
+        # evaluate a[$(cmd)] from the file; base 10 — 0100 is no octal 64.
+        [[ "$name" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,31}$ && "$uid" =~ ^[0-9]{1,10}$ ]] || continue
+        uid=$((10#$uid))
         (( uid == 0 || (uid >= 1000 && uid != 65534) )) || continue
         case "${shell##*/}" in
             nologin|false|true|sync|shutdown|halt) continue ;;
@@ -578,14 +600,22 @@ scrub_token(){
 # ---------------------------------------------------------------------------
 version_of_agent(){ "$TELEPORT_BIN" version 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1 | tr -d v; }
 
-# 0 — a is newer than b
+# Versions meet bash arithmetic, and (( )) evaluates a[$(cmd)] in its operand
+# — a command. So every version, even a local one, is X.Y.Z of at most 9
+# digits each before any arithmetic, and goes in as base 10 (18.09.0 is no
+# octal error).
+RE_SEMVER='^[0-9]{1,9}\.[0-9]{1,9}\.[0-9]{1,9}$'
+
+# 0 — a is newer than b; 1 — not newer; 2 — one of them is not X.Y.Z.
 semver_gt(){
+    [[ "$1" =~ $RE_SEMVER && "$2" =~ $RE_SEMVER ]] || return 2
     local -a a b; local i
     IFS=. read -r -a a <<< "$1"
     IFS=. read -r -a b <<< "$2"
     for i in 0 1 2; do
-        (( ${a[i]:-0} > ${b[i]:-0} )) && return 0
-        (( ${a[i]:-0} < ${b[i]:-0} )) && return 1
+        [[ "${a[i]}" =~ ^[0-9]+$ && "${b[i]}" =~ ^[0-9]+$ ]] || return 2
+        (( 10#${a[i]} > 10#${b[i]} )) && return 0
+        (( 10#${a[i]} < 10#${b[i]} )) && return 1
     done
     return 1
 }
@@ -594,13 +624,16 @@ semver_gt(){
 # not reachable over verified TLS. Any failure here is "not yet": DNS, connect,
 # timeout, TLS (the clock of a fresh machine may still be wrong), an HTTP
 # error of a balancer in front of the proxy, an answer without server_version
-# (a captive portal, not a Teleport proxy) — code 100.
+# (a captive portal, not a Teleport proxy) — code 100; a server_version that
+# is not X.Y.Z[-pre][+build] — code 101. The answer comes from the network:
+# only the checked X.Y.Z leaves this function (see RE_SEMVER).
 probe_proxy(){
     local proxy="$1" body rc version
     body="$(curl -fsS --max-time 15 "https://$proxy/webapi/find" 2>/dev/null)" || { rc=$?; return "$rc"; }
     version="$(grep -oE '"server_version":"[^"]+"' <<< "$body" | head -1 | cut -d'"' -f4)"
     [[ -n "$version" ]] || return 100
-    printf '%s\n' "$version"
+    [[ "$version" =~ ^([0-9]{1,9}\.[0-9]{1,9}\.[0-9]{1,9})([-+][A-Za-z0-9.+-]*)?$ ]] || return 101
+    printf '%s\n' "${BASH_REMATCH[1]}"
 }
 
 # What the curl code of probe_proxy means, for the journal and `status`.
@@ -614,6 +647,7 @@ net_reason(){
             echo "TLS не сошёлся — часы ещё не синхронизированы? (curl $1)" ;;
         52|55|56) echo "соединение оборвано (curl $1)" ;;
         100) echo "ответ не от прокси Teleport — нет server_version в /webapi/find" ;;
+        101) echo "прокси назвал версию не по форме X.Y.Z в /webapi/find — не прокси Teleport?" ;;
         *) echo "curl $1" ;;
     esac
 }
@@ -622,10 +656,13 @@ net_reason(){
 # Echo the reason and return 0 on a mismatch.
 version_mismatch(){
     local agent="$1" server="$2"
+    if [[ ! "$agent" =~ $RE_SEMVER || ! "$server" =~ $RE_SEMVER ]]; then
+        echo "версия агента или кластера не по форме X.Y.Z — сверить нельзя"; return 0
+    fi
     if semver_gt "$agent" "$server"; then
         echo "агент $agent новее кластера $server — Teleport такую связку не поддерживает"; return 0
     fi
-    if (( ${server%%.*} - ${agent%%.*} > 1 )); then
+    if (( 10#${server%%.*} - 10#${agent%%.*} > 1 )); then
         echo "агент $agent старше кластера $server больше чем на мажор"; return 0
     fi
     return 1
@@ -700,9 +737,9 @@ read_pending(){
     [[ -f "$JOIN_PENDING" ]] || return 1
     while IFS= read -r line; do
         case "$line" in
-            since=*) [[ "${line#since=}" =~ ^[0-9]{1,12}$ ]] && PEND_SINCE="${line#since=}" ;;
-            attempts=*) [[ "${line#attempts=}" =~ ^[0-9]{1,9}$ ]] && PEND_ATTEMPTS="${line#attempts=}" ;;
-            last=*) [[ "${line#last=}" =~ ^[0-9]{1,12}$ ]] && PEND_LAST="${line#last=}" ;;
+            since=*) [[ "${line#since=}" =~ ^[0-9]{1,12}$ ]] && PEND_SINCE="$((10#${line#since=}))" ;;
+            attempts=*) [[ "${line#attempts=}" =~ ^[0-9]{1,9}$ ]] && PEND_ATTEMPTS="$((10#${line#attempts=}))" ;;
+            last=*) [[ "${line#last=}" =~ ^[0-9]{1,12}$ ]] && PEND_LAST="$((10#${line#last=}))" ;;
             error=*) PEND_ERROR="${line#error=}" ;;
         esac
     done < "$JOIN_PENDING"
@@ -1158,8 +1195,8 @@ read_attempts(){
     [[ -f "$LABELS_ATTEMPTS" ]] || return 0
     while IFS= read -r line; do
         case "$line" in
-            count=*) [[ "${line#count=}" =~ ^[0-9]{1,6}$ ]] && ATT_COUNT="${line#count=}" ;;
-            last=*) [[ "${line#last=}" =~ ^[0-9]{1,12}$ ]] && ATT_LAST="${line#last=}" ;;
+            count=*) [[ "${line#count=}" =~ ^[0-9]{1,6}$ ]] && ATT_COUNT="$((10#${line#count=}))" ;;
+            last=*) [[ "${line#last=}" =~ ^[0-9]{1,12}$ ]] && ATT_LAST="$((10#${line#last=}))" ;;
         esac
     done < "$LABELS_ATTEMPTS"
 }
@@ -1326,6 +1363,7 @@ read_token_file(){
     T_URL=""; T_TOKEN=""
     mode="$(stat -c %a "$LABELS_TOKEN")" || return 1
     owner="$(stat -c %u "$LABELS_TOKEN")" || return 1
+    [[ "$mode" =~ ^[0-7]{3,4}$ ]] || { log "ОШИБКА: $LABELS_TOKEN — права не прочитаны"; return 1; }
     if (( (8#$mode & 8#077) != 0 )); then
         log "ОШИБКА: $LABELS_TOKEN — права $mode, шире 0600; выполните labels-enable заново"; return 1
     fi

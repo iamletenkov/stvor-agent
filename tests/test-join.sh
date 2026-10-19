@@ -37,7 +37,8 @@ STVOR_ARGS=(TELEPORT_PROXY="$PROXY" TELEPORT_JOIN_METHOD=bound_keypair TELEPORT_
 # ---------------------------------------------------------------------------
 # FAKE: switches and logs of the fakes.
 #   net          curl: a code (6 DNS, 7 connect, 28 timeout, 60 TLS), "up" or
-#                "html" (200 without server_version: a captive portal)
+#                "html" (200 without server_version: a captive portal),
+#                "body" (200 with the answer from $FAKE/body)
 #   agent        what `systemctl start teleport.service` does:
 #                  join   — the agent registers (host_uuid appears)
 #                  refuse — the agent logs a refusal (journal.refuse)
@@ -67,6 +68,7 @@ new_root(){
 net="$(cat "$FAKE/net")"
 if [[ "$net" == up ]]; then echo '{"server_version":"18.10.0"}'; exit 0; fi
 if [[ "$net" == html ]]; then echo '<html>captive portal</html>'; exit 0; fi
+if [[ "$net" == body ]]; then cat "$FAKE/body"; exit 0; fi
 exit "$net"
 EOF
     cat > "$ROOT/bin/journalctl" <<'EOF'
@@ -383,6 +385,57 @@ check "FORCE без сети на зарегистрированной — ко�
 check "FORCE без сети — регистрацию не трогает" grep -q 'рабочую регистрацию не трогаю' <<< "$msg"
 check_not "FORCE без сети — ожидания нет" test -e "$PENDING"
 eq "FORCE без сети — регистрация цела" 55555555-6666 "$(cat "$HOST_UUID")"
+
+echo "== версия кластера из сети не исполняется (арифметика bash) =="
+# (( )) evaluates a[$(cmd)] in its operand: a server_version like that would
+# run a command as root. The version is checked as X.Y.Z before any use.
+evil_versions=('a[$(touch '"$TMP"'/pwn-a)]' '1.2.3$(touch '"$TMP"'/pwn-b)' '18.a[$(touch '"$TMP"'/pwn-c)].0' 'x[$(touch '"$TMP"'/pwn-d)]+1')
+for v in "${evil_versions[@]}"; do
+    new_root
+    printf '{"server_version":"%s"}\n' "$v" > "$FAKE/body"
+    echo body > "$FAKE/net"
+    msg="$(stvor_line 2>&1)"; rc=$?
+    eq "join, версия [$v]: код 0 (ждём)" 0 "$rc"
+    check "join, версия [$v]: файл ожидания есть" test -f "$PENDING"
+    check "join, версия [$v]: причина — версия не по форме" grep -q 'не по форме' "$PENDING"
+    check_not "join, версия [$v]: агент не стартовал" grep -q '^start teleport.service' <<< "$(slog)"
+    msg="$(tp join-retry 2>&1)"; rc=$?
+    eq "тик, версия [$v]: код 0" 0 "$rc"
+    check "тик, версия [$v]: попытка засчитана" test "$(field attempts "$PENDING")" -ge 2
+done
+for f in pwn-a pwn-b pwn-c pwn-d; do
+    check_not "версия из сети не выполнила команду ($f)" test -e "$TMP/$f"
+done
+# A pre-release or build suffix is a valid version: only X.Y.Z goes on.
+new_root
+printf '{"server_version":"18.10.0-dev.1+abc"}\n' > "$FAKE/body"
+echo body > "$FAKE/net"
+msg="$(stvor_line 2>&1)"; rc=$?
+eq "версия 18.10.0-dev.1+abc — регистрация" 0 "$rc"
+check "версия 18.10.0-dev.1+abc — кластер 18.10.0" grep -q 'кластер 18\.10\.0,' <<< "$msg"
+# Leading zeros are base 10, not octal.
+new_root
+printf '{"server_version":"18.010.08"}\n' > "$FAKE/body"
+echo body > "$FAKE/net"
+msg="$(stvor_line 2>&1)"; rc=$?
+eq "версия 18.010.08 — регистрация (база 10)" 0 "$rc"
+
+echo "== числовые переменные окружения проверяются до арифметики =="
+for var in BISQUITE_TELEPORT_JOIN_TIMEOUT BISQUITE_TELEPORT_RESTART_TIMEOUT BISQUITE_TELEPORT_NOW; do
+    new_root
+    echo 7 > "$FAKE/net"
+    msg="$(env "$var=a[\$(touch $TMP/pwn-$var)]" bash "$STAGED/bisquite-teleport" join "${STVOR_ARGS[@]}" <<< "$SECRET" 2>&1)"; rc=$?
+    check "$var с подстановкой — отказ" test "$rc" -ne 0
+    check "$var с подстановкой — текст называет переменную" grep -q "$var" <<< "$msg"
+    check_not "$var с подстановкой — команда не выполнена" test -e "$TMP/pwn-$var"
+    msg="$(env "$var=12x" bash "$STAGED/bisquite-teleport" status 2>&1)"; rc=$?
+    check "$var=12x — отказ" test "$rc" -ne 0
+done
+# The lock wait of join is JOIN_TIMEOUT + 60: the old tests pass -59.
+new_root
+echo 7 > "$FAKE/net"
+msg="$(BISQUITE_TELEPORT_JOIN_TIMEOUT=-59 stvor_line 2>&1)"; rc=$?
+eq "BISQUITE_TELEPORT_JOIN_TIMEOUT=-59 — принят" 0 "$rc"
 
 echo "== юниты повтора =="
 U="$SRC/systemd"
