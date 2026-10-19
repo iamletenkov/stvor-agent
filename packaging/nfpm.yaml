@@ -1,0 +1,52 @@
+# nfpm: stvor-agent_<v>_<arch>.deb (spec §9.1, §9.2). Built by make deb in the
+# goreleaser/nfpm container (tag pinned in the Makefile) from the repository root.
+# Environment: ARCH (amd64|arm64), DEB_VERSION (X.Y.Z). Every mtime comes from
+# SOURCE_DATE_EPOCH (commit time). tools/check-deb.sh checks the result.
+name: stvor-agent
+arch: ${ARCH}
+platform: linux
+version: ${DEB_VERSION}
+version_schema: none
+section: admin
+priority: optional
+maintainer: Letenkov Maksim <letenkovmaksim@yandex.ru>
+vendor: Letenkov Maksim
+homepage: https://github.com/iamletenkov/stvor-agent
+license: PolyForm-Noncommercial-1.0.0
+description: |-
+  Stvor agent: Teleport labels of this machine from the portal
+  stvor-agent is the service that represents the Stvor portal on a machine.
+  It polls the robot API of the portal and keeps the managed Teleport labels
+  (env, space) equal to the decision of the portal through the teleport
+  extension of cream. The service waits for `stvor-agent enable` (a token
+  from the portal) and does not start before it.
+
+# The agent runs cream on every tick; cream 1.0.0 is the first release with the
+# cream/v1 contract the agent relies on (spec §9.1, §12). systemd is not a
+# dependency: an image may be built without it.
+depends:
+  - cream (>= 1.0.0)
+
+contents:
+  - src: dist/stvor-agent-linux-${ARCH}
+    dst: /usr/bin/stvor-agent
+    expand: true
+    file_info:
+      mode: 0755
+  - src: packaging/stvor-agent.service
+    dst: /usr/lib/systemd/system/stvor-agent.service
+    file_info:
+      mode: 0644
+  - src: packaging/copyright
+    dst: /usr/share/doc/stvor-agent/copyright
+    file_info:
+      mode: 0644
+  - src: NOTICE
+    dst: /usr/share/doc/stvor-agent/NOTICE
+    file_info:
+      mode: 0644
+
+scripts:
+  postinstall: packaging/postinst
+  preremove: packaging/prerm
+  postremove: packaging/postrm

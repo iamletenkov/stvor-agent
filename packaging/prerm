@@ -1,0 +1,21 @@
+#!/bin/sh
+# prerm of stvor-agent (spec §9.1): on removal the unit is disabled and, with
+# a running systemd, stopped. An upgrade keeps the service running: postinst
+# try-restarts it onto the new binary.
+set -e
+
+unit=stvor-agent.service
+
+case "$1" in
+remove | deconfigure)
+	if command -v systemctl >/dev/null 2>&1; then
+		if [ -d /run/systemd/system ]; then
+			systemctl disable --now "$unit" || true
+		else
+			systemctl disable "$unit" || true
+		fi
+	fi
+	;;
+esac
+
+exit 0

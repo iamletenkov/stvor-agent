@@ -69,7 +69,7 @@ func TestUnitRequiredKeys(t *testing.T) {
 		{"Service", "Restart", "always"},
 		{"Service", "RestartSec", "10"},
 		{"Service", "KillMode", "mixed"},
-		{"Service", "TimeoutStopSec", "90"},
+		{"Service", "TimeoutStopSec", "120"},
 		{"Service", "EnvironmentFile", "-/etc/cream/stvor-agent/config"},
 		{"Service", "StateDirectory", "stvor-agent"},
 		{"Service", "StateDirectoryMode", "0700"},

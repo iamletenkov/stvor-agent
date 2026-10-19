@@ -455,9 +455,17 @@ journalctl -u bisquite-teleport-join     # тики повтора join: поп�
 ## Разработка
 
 ```bash
-make check     # shellcheck (если установлен) и все tests/test-*.sh
-make deb       # dist/bisquite-teleport-agent_<версия>_all.deb и dist/SHA256SUMS
+make ci            # всё, что гоняет CI (под общим замком тяжёлых прогонов)
+make deb           # dist/stvor-agent_<версия>_{amd64,arm64}.deb и dist/SHA256SUMS (ARCH=amd64 — один)
+make repro-check   # две сборки .deb с пустыми кешами — равные sha256
+make vuln          # govulncheck по модулю
+make legacy-deb    # 3.x: dist/legacy/bisquite-teleport-agent_<версия>_all.deb
 ```
+
+Пакет 4.x собирает nfpm (`goreleaser/nfpm:v2.47.0`, `packaging/nfpm.yaml`): `make repro-check`
+показал побайтную воспроизводимость (mtime — `SOURCE_DATE_EPOCH`, время коммита), поэтому возврат
+к `dpkg-deb` не нужен. `make deb` проверяет состав и поля в `debian:13` (`tools/check-deb.sh`) и
+ставит, удаляет и вычищает пакет живым `dpkg` с поддельным `systemctl` (`tools/check-deb-live.sh`).
 
 Тесты идут на подменённом корне (`BISQUITE_TELEPORT_ROOT`) с поддельными
 `systemctl`, `journalctl`, `curl`, `dpkg` и `teleport`: root, systemd и сеть
