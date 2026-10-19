@@ -27,7 +27,7 @@
 - [x] Task 11: CE — расширение `teleport`: перенос join/render/apps/os_logins/leave/scrub-token, хуки, юниты, `test-join.sh`
 - [x] Task 12: CE — `teleport`: управляемые и командные метки, `set-managed`, `managed-status`, `test-managed.sh`
 - [x] Task 13: CE — обёртка `stvor-agent` (пины по архитектурам, drop-in метки `stvor_agent`, `test-stvor-agent.sh`)
-- [ ] Task 14: CE — путь `apps.d` у `code-server`/`selkies`, удаление `teleport-agent`, `agent-bump` на `stvor-agent`
+- [x] Task 14: CE — путь `apps.d` у `code-server`/`selkies`, удаление `teleport-agent`, `agent-bump` на `stvor-agent`
 - [x] Task 15: SA — интеграционный тест адаптера с настоящим `cream` и фиктивным расширением
 
 Волна C — упаковка, выпуск, чистка, приёмка:
