@@ -436,7 +436,7 @@ extensions/debian/teleport/
 
 ### 10.3 Ручки домена `teleport` (`/etc/cream/teleport/config`)
 Из прежней схемы остаются `TELEPORT_PROXY` (readonly, пишет `join`), `TELEPORT_JOIN_METHOD` (readonly),
-`TELEPORT_TOKEN` (readonly, `secret: file`), `TELEPORT_CA_PIN`, `TELEPORT_ENV`, `TELEPORT_NODENAME`, `TELEPORT_LABELS`,
+`TELEPORT_TOKEN` (readonly, имя токена — не секрет; РT1), `TELEPORT_CA_PIN`, `TELEPORT_ENV`, `TELEPORT_NODENAME`, `TELEPORT_LABELS`,
 `TELEPORT_APPS`, `TELEPORT_APPS_DISABLE`, `TELEPORT_APPS_ICONS`, `TELEPORT_APPS_DISCOVERY`, `TELEPORT_OS_LOGINS` — те
 же типы и регулярные выражения (`ro:` → `readonly`, `?` → `empty`, спека cream §8.2). Удаляется `TELEPORT_LABELS_URL`.
 Добавляются:
@@ -448,8 +448,11 @@ extensions/debian/teleport/
 
 Значение допускает `.` — ради будущих управляющих; S сам ограничивает `env`/`space` DNS-алфавитом портала.
 Зарезервированы в управляемых метках: `app`, `os_logins`, `teleport.icon` (как в `TELEPORT_LABELS`).
-Секретные ключи (`TELEPORT_TOKEN`) `join` пишет вложенным `cream set --allow-readonly teleport KEY=-` со значением на
-stdin: секрет в argv cream отвергает (64, спека cream §8.3).
+**РT1 (2026-10-19).** У действия cream может быть только один секретный параметр (спека cream §4.1), поэтому у
+`join` единственный секрет — `TELEPORT_REGISTRATION_SECRET=-` со stdin: для метода `token` это сам join-токен, для
+`bound_keypair` — секрет регистрации. `TELEPORT_TOKEN` — несекретное имя токена, передаётся парой. Секрет первого
+входа лежит в `$CREAM_STATE_DIR` (0600) до подтверждения регистрации; render берёт его оттуда, `scrub-token` стирает.
+Ни один ключ домена `teleport` не секретный; секрет в argv cream отвергает (64, спека cream §8.3).
 
 **Командные метки (`/etc/cream/teleport/command-labels.d/`).** Обобщение `apps.d`: другое расширение кладёт файл
 `<ключ>` (через `files` своего манифеста — cream владеет файлом и удалит его при `remove`) с одной строкой
