@@ -17,8 +17,8 @@ import (
 const (
 	DefaultPath = "/usr/bin/systemctl"
 	// DefaultTimeout bounds one systemctl call: a restart waits for the
-	// running tick of the service (TimeoutStopSec=90) plus the start.
-	DefaultTimeout = 120 * time.Second
+	// running tick of the service (TimeoutStopSec=120) plus the start.
+	DefaultTimeout = 150 * time.Second
 	// stateUnknown is what IsActive reports when systemctl gave no answer.
 	stateUnknown = "unknown"
 )

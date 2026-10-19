@@ -290,7 +290,7 @@ S проверяет ответ строго (`schema == 1`, ключи и зн�
 
 ### 5.8 Обработка остановки посреди применения
 `KillMode=mixed`: при остановке службы SIGTERM получает только `stvor-agent`, он дожидается дочернего `cream run`
-(`TimeoutStopSec=90`). Если дочерний всё же убит (SIGKILL по тайм-ауту, отключение питания) — маркер
+(`TimeoutStopSec=120`: `set-managed` идёт до 90 с, и ещё до 15 с между SIGTERM и SIGKILL его группе — §5.7). Если дочерний всё же убит (SIGKILL по тайм-ауту, отключение питания) — маркер
 `managed-pending` T записан **до** записи ручек, и следующий тик после старта увидит `pending=true` → `set-managed`
 повторит restart.
 
@@ -370,7 +370,7 @@ S проверяет ответ строго (`schema == 1`, ключи и зн�
   создаются `enable`/`StateDirectory=`.
 - Юнит: `Type=exec`, `ExecStart=/usr/bin/stvor-agent run`, `ConditionPathExists=/etc/stvor-agent/token` (без токена
   служба не стартует — «ждёт `enable`»), `After=`/`Wants=network-online.target`, `Restart=always`, `RestartSec=10`,
-  `KillMode=mixed`, `TimeoutStopSec=90`, `EnvironmentFile=-/etc/cream/stvor-agent/config`, `StateDirectory=stvor-agent`,
+  `KillMode=mixed`, `TimeoutStopSec=120` (§5.8), `EnvironmentFile=-/etc/cream/stvor-agent/config`, `StateDirectory=stvor-agent`,
   `StateDirectoryMode=0700`, hardening из §6, `WantedBy=multi-user.target`.
 - Сопровождающие скрипты: `postinst` — `daemon-reload` (если systemd запущен), `enable` юнита; при наличии токена —
   `try-restart` (обновление пакета). `prerm remove` — `disable --now`. `postrm purge` — удалить `/etc/stvor-agent` и

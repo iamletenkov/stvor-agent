@@ -14,9 +14,10 @@ Type=exec
 ExecStart=/usr/bin/stvor-agent run
 Restart=always
 RestartSec=10
-# SIGTERM to the agent only: it waits for the current tick (and its cream run) to end.
+# SIGTERM to the agent only: it waits for the current tick (and its cream run) to end:
+# set-managed may run up to 90 s plus 15 s between SIGTERM and SIGKILL (spec §5.7, §5.8).
 KillMode=mixed
-TimeoutStopSec=90
+TimeoutStopSec=120
 # STVOR_AGENT_INTERVAL, STVOR_AGENT_LOG_LEVEL (cream domain stvor-agent).
 EnvironmentFile=-/etc/cream/stvor-agent/config
 StateDirectory=stvor-agent
