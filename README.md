@@ -231,6 +231,7 @@ make ci                # всё, что гоняет CI (под общим за�
 make deb VERSION=4.0.0 # dist/stvor-agent_<версия>_{amd64,arm64}.deb и dist/SHA256SUMS (ARCH=amd64 — один)
 make repro-check       # две сборки .deb с пустыми кешами — равные sha256
 make vuln              # govulncheck по модулю
+make man               # dist/man/stvor-agent.8 из таблицы команд --help (man -l dist/man/stvor-agent.8)
 ```
 
 Пакет 4.x собирает nfpm (`goreleaser/nfpm:v2.47.0`, `packaging/nfpm.yaml`): `make repro-check`

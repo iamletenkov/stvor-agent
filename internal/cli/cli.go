@@ -26,18 +26,56 @@ import (
 	"github.com/iamletenkov/stvor-agent/internal/version"
 )
 
-const usage = `usage: stvor-agent <command> [KEY=VALUE ...]
+// command is one subcommand as --help shows it; man.go renders stvor-agent(8)
+// from the same table, so help and the man page cannot list different
+// commands or flags.
+type command struct {
+	Name string
+	// Args is the synopsis after the name: KEY=VALUE arguments and flags.
+	Args string
+	// Summary is the one-line help text.
+	Summary string
+	// Flags are the flags the command accepts (they also appear in Args).
+	Flags []string
+	// Root is true when the command needs uid 0.
+	Root bool
+}
 
-commands:
-  run                         service loop (ExecStart of stvor-agent.service)
-  enable URL=<url>            store the portal token from stdin and start the service
-  disable                     stop the service, remove the token and the state
-  sync                        one reconcile tick now
-  apply env=<v> space=<v>     set the managed labels without the portal
-  status [--json]             show the agent state
-  version [--short|--label]   print the version
-  help                        print this help
-`
+// commands is the command table, in help order.
+var commands = []command{
+	{Name: "run", Summary: "service loop (ExecStart of stvor-agent.service)", Root: true},
+	{Name: "enable", Args: "URL=<url>", Summary: "store the portal token from stdin and start the service", Root: true},
+	{Name: "disable", Summary: "stop the service, remove the token and the state", Root: true},
+	{Name: "sync", Summary: "one reconcile tick now", Root: true},
+	{Name: "apply", Args: "env=<v> space=<v>", Summary: "set the managed labels without the portal", Root: true},
+	{Name: "status", Args: "[--json]", Summary: "show the agent state", Flags: []string{"--json"}},
+	{Name: "version", Args: "[--short|--label]", Summary: "print the version", Flags: []string{"--short", "--label"}},
+	{Name: "help", Summary: "print this help"},
+}
+
+// synopsis is "name args".
+func (c command) synopsis() string {
+	return strings.TrimSpace(c.Name + " " + c.Args)
+}
+
+func findCommand(name string) (command, bool) {
+	for _, c := range commands {
+		if c.Name == name {
+			return c, true
+		}
+	}
+	return command{}, false
+}
+
+// usage is the help text of every command.
+var usage = func() string {
+	var b strings.Builder
+	b.WriteString("usage: stvor-agent <command> [KEY=VALUE ...]\n\ncommands:\n")
+	for _, c := range commands {
+		fmt.Fprintf(&b, "  %-28s%s\n", c.synopsis(), c.Summary)
+	}
+	return b.String()
+}()
 
 // Exit codes shared by all subcommands.
 const (
@@ -135,8 +173,9 @@ func (a *App) Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return writeOut(stdout, usage)
 	case "status":
 		return a.runStatus(rest, stdout, stderr)
-	case "run", "enable", "disable", "sync", "apply":
-	default:
+	}
+	// The rest of the table: commands that need root.
+	if c, ok := findCommand(cmd); !ok || !c.Root {
 		_, _ = fmt.Fprintf(stderr, "stvor-agent: unknown command %q\n\n%s", cmd, usage)
 		return exitUsage
 	}
