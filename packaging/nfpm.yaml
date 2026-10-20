@@ -1,6 +1,7 @@
 # nfpm: stvor-agent_<v>_<arch>.deb (spec §9.1, §9.2). Built by make deb in the
 # goreleaser/nfpm container (tag pinned in the Makefile) from the repository root.
-# Environment: ARCH (amd64|arm64), DEB_VERSION (X.Y.Z). Every mtime comes from
+# Environment: ARCH (amd64|arm64), DEB_VERSION (X.Y.Z), MAN_DIR (stvor-agent.8.gz
+# from tools/genman). Every mtime comes from
 # SOURCE_DATE_EPOCH (commit time). tools/check-deb.sh checks the result.
 name: stvor-agent
 arch: ${ARCH}
@@ -35,6 +36,11 @@ contents:
       mode: 0755
   - src: packaging/stvor-agent.service
     dst: /usr/lib/systemd/system/stvor-agent.service
+    file_info:
+      mode: 0644
+  - src: ${MAN_DIR}/stvor-agent.8.gz
+    dst: /usr/share/man/man8/stvor-agent.8.gz
+    expand: true
     file_info:
       mode: 0644
   - src: packaging/copyright

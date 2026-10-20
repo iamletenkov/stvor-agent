@@ -32,6 +32,7 @@ cat >"$work/want" <<-LIST
 	-rw-r--r-- root/root /usr/lib/systemd/system/stvor-agent.service
 	-rw-r--r-- root/root /usr/share/doc/stvor-agent/NOTICE
 	-rw-r--r-- root/root /usr/share/doc/stvor-agent/copyright
+	-rw-r--r-- root/root /usr/share/man/man8/stvor-agent.8.gz
 	-rwxr-xr-x root/root /usr/bin/stvor-agent
 LIST
 sort -o "$work/want" "$work/want"
@@ -73,6 +74,20 @@ awk '/^License: PolyForm-Noncommercial-1.0.0$/ && seen++ {on=1; next}
 	on {sub(/^ /, ""); if ($0 == ".") $0 = ""; print}' \
 	"$work/root/usr/share/doc/stvor-agent/copyright" >"$work/license"
 cmp -s "$work/license" LICENSE || bad "$deb: текст лицензии в copyright отличается от LICENSE"
+
+# Man page (as lintian would): gzip -9n without name and time, .TH of section 8,
+# NAME/SYNOPSIS/DESCRIPTION, ASCII only.
+man="$work/root/usr/share/man/man8/stvor-agent.8.gz"
+if gzip -t "$man"; then
+	[ "$(od -An -tu1 -j3 -N5 "$man" | tr -s ' ')" = " 0 0 0 0 0" ] || bad "$deb: stvor-agent.8.gz с именем или временем в заголовке gzip"
+	zcat "$man" | head -n1 | grep -q '^\.TH STVOR\\-AGENT 8 ' || bad "$deb: stvor-agent.8 без .TH раздела 8"
+	for sec in NAME SYNOPSIS DESCRIPTION; do
+		zcat "$man" | grep -q "^\.SH $sec\$" || bad "$deb: в stvor-agent.8 нет .SH $sec"
+	done
+	if zcat "$man" | LC_ALL=C grep -q '[^[:print:][:space:]]'; then bad "$deb: в stvor-agent.8 не-ASCII символы"; fi
+else
+	bad "$deb: stvor-agent.8.gz битый"
+fi
 
 bin="$work/root/usr/bin/stvor-agent"
 [ "$(elf_machine "$bin")" = "$machine" ] || bad "$deb: /usr/bin/stvor-agent собран не под $arch"

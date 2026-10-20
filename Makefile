@@ -57,7 +57,7 @@ GO = $(DOCKER_RUN) $(GO_IMAGE)
 GO_FILES = find . \( -path ./.cache -o -path ./dist -o -path ./.scratchpad -o -path ./.git \) -prune -o -name '*.go' -print
 
 .DEFAULT_GOAL := help
-.PHONY: help cache build build-all test test-integration e2e e2e-unlocked lint actionlint contract-fixtures fmt deb \
+.PHONY: help cache build build-all test test-integration e2e e2e-unlocked lint actionlint contract-fixtures fmt man deb \
 	deb-unlocked repro-check vuln ci ci-unlocked clean
 
 help: ## список целей
@@ -139,7 +139,8 @@ actionlint: ## actionlint по .github/workflows (образ закреплён 
 contract-fixtures: ## сверка файлов-образцов контракта с пином и с cream-extensions
 	tools/check-contract-fixtures.sh
 
-# Оба .deb (или один — ARCH=amd64|arm64) из готовых dist/stvor-agent-linux-*: nfpm,
+# Оба .deb (или один — ARCH=amd64|arm64) из готовых dist/stvor-agent-linux-* и
+# man-страницы $(RELEASE_DIR)/man/stvor-agent.8.gz (tools/genman): nfpm,
 # затем в debian — состав и поля (tools/check-deb.sh) и живые dpkg -i/-r/--purge
 # от root (tools/check-deb-live.sh, корень репозитория — только чтение).
 deb: ## dist/stvor-agent_<v>_<arch>.deb (ARCH=amd64|arm64, по умолчанию оба) и SHA256SUMS (под замком)
@@ -147,9 +148,10 @@ deb: ## dist/stvor-agent_<v>_<arch>.deb (ARCH=amd64|arm64, по умолчани
 
 deb-unlocked: build-all
 	@mkdir -p $(RELEASE_DIR)
+	$(GO) go run ./tools/genman -out $(RELEASE_DIR)/man -version $(DEB_VERSION)
 	@set -e; for a in $(DEB_ARCHES); do \
 		echo "== nfpm stvor-agent_$(DEB_VERSION)_$$a.deb"; \
-		$(DOCKER_RUN) -e ARCH=$$a -e DEB_VERSION=$(DEB_VERSION) $(NFPM_IMAGE) \
+		$(DOCKER_RUN) -e ARCH=$$a -e DEB_VERSION=$(DEB_VERSION) -e MAN_DIR=$(RELEASE_DIR)/man $(NFPM_IMAGE) \
 			package -f packaging/nfpm.yaml -p deb -t $(RELEASE_DIR)/stvor-agent_$(DEB_VERSION)_$$a.deb; \
 		$(DOCKER_RUN) $(DEBIAN_IMAGE) sh tools/check-deb.sh $(DEB_VERSION) $$a $(RELEASE_DIR); \
 		if [ "$(DEB_LIVE)" = 1 ]; then \
@@ -165,6 +167,10 @@ repro-check: ## две сборки обоих .deb с одним SOURCE_DATE_EP
 
 # go run …@версия собирает govulncheck вне модуля: go.mod/go.sum не меняются,
 # модули инструмента — в отдельном .cache/vuln-mod.
+# Страницу рендерит internal/cli из той же таблицы команд, что --help (tools/genman).
+man: cache ## man-страница stvor-agent.8 (и .gz) в dist/man; смотреть: man -l dist/man/stvor-agent.8
+	$(GO) go run ./tools/genman -out dist/man -version $(DEB_VERSION) -plain
+
 vuln: cache ## govulncheck по модулю (версия закреплена в GOVULNCHECK)
 	$(DOCKER_RUN) -e GOMODCACHE=/cache/vuln-mod -e GOFLAGS="-buildvcs=false -mod=mod" \
 		$(GO_IMAGE) go run $(GOVULNCHECK) ./...
