@@ -35,7 +35,7 @@ packaging/         — юнит stvor-agent.service (+ unit_test.go), nfpm.yaml,
 test/integration/  — адаптер против настоящего cream в debian:12 (`make test-integration`)
 test/e2e/          — сквозной тест в debian:12 с systemd: cream, каталог по пину, fakeportal (`make e2e`)
 tools/             — check-test-map, check-contract-fixtures (+ пин contract-fixtures.sha256), check-deb, check-deb-live, repro-check
-docs/              — README.md (индекс), STATUS.md, portal-labels-api.md, test-map.md, adr/, specs/, plans/, research/
+docs/              — README.md (индекс), STATUS.md, portal-labels-api.md, test-map.md, runbooks/, adr/, specs/, plans/, research/
 .claude/           — агенты, skills, правила, хуки Claude Code
 Makefile           — публичный API (`make help`): lint, actionlint, contract-fixtures, test, build-all, deb, repro-check, vuln, test-integration, e2e, ci
 ```
@@ -47,11 +47,11 @@ Makefile           — публичный API (`make help`): lint, actionlint, c
 4. **Docker-first:** Go — только в контейнере `golang:1.26.9` через `make`. Хост общий: один `make ci` за раз (замок тяжёлых прогонов общий с cream).
 
 ## Definition of Done
-Подтверждено **выводом**: `make ci` (lint, test, build-all, deb, repro-check и, пока жив 3.x, legacy-проверки) зелёный; README/`docs/` обновлены; чекбокс плана отмечен в том же коммите.
+Подтверждено **выводом**: `make ci` (lint, test, build-all, deb, repro-check) зелёный; README/`docs/` обновлены; чекбокс плана отмечен в том же коммите.
 
 ## Git и выпуск
 - Ветки `feature/`, `fix/`, `chore/`, `docs/`, `ci/` от свежего `origin/main`; в `main` — PR со squash.
-- Версию и `CHANGELOG.md` ведёт **release-please** (`release-type: go`, тег `vX.Y.Z`); релиз прикладывает оба `.deb` и `SHA256SUMS` и запускает подъём пина в cream-extensions. Теги руками не ставят — skill `/release`.
+- Версию и `CHANGELOG.md` ведёт **release-please** (`release-type: go`, тег `vX.Y.Z`); релиз прикладывает оба `.deb` и `SHA256SUMS` и запускает подъём пина в cream-extensions. Теги руками не ставят — skill `/release`, [runbook 01](docs/runbooks/01_release.md).
 - `git add <пути>`, никогда `git add -A`. Хуки lefthook (`lefthook install`) не обходить: `--no-verify` запрещён.
 
 ## Гигиена и секреты

@@ -7,6 +7,7 @@
 | Архитектурные решения | `docs/adr/NNNN-slug.md` | MADR по `docs/adr/0000-template.md`, строка в `docs/adr/README.md` |
 | Спеки (что и почему) | `docs/specs/YYYY-MM-DD-slug.md` | раздел «Отвергнутые варианты» обязателен |
 | Планы (как) | `docs/plans/YYYY-MM-DD-slug.md` | тот же slug, `## Progress Tracker` в шапке |
+| Runbook'и (операционные процедуры) | `docs/runbooks/NN_slug.md` | пошагово: команды и проверка результата |
 | Исследования | `docs/research/YYYY-MM-DD-slug.md` | отчёты, сравнения, внешние практики |
 | Изменения версии | `CHANGELOG.md` | ведёт release-please, руками не правим |
 

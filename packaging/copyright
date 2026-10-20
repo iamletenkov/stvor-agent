@@ -14,7 +14,7 @@ Comment: The Go standard library and runtime, statically linked into the binary.
 
 License: PolyForm-Noncommercial-1.0.0
  Required Notice: Copyright (c) 2026 Letenkov Maksim (letenkovmaksim@yandex.ru)
- Required Notice: Non-commercial users must attribute Letenkov Maksim as the original author of bisquite-teleport-agent in documentation, UI, or public materials referencing the software.
+ Required Notice: Non-commercial users must attribute Letenkov Maksim as the original author of stvor-agent in documentation, UI, or public materials referencing the software.
  .
  # PolyForm Noncommercial License 1.0.0
  .
