@@ -4,6 +4,13 @@
 release-please из Conventional Commits; 3.0.1 и старше написаны вручную в
 формате [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/).
 
+## [4.0.1](https://github.com/iamletenkov/stvor-agent/compare/v4.0.0...v4.0.1) (2026-10-20)
+
+
+### docs
+
+* **status:** выпуск 4.0.1 с man-страницей stvor-agent(8) ([#16](https://github.com/iamletenkov/stvor-agent/issues/16)) ([9c2786d](https://github.com/iamletenkov/stvor-agent/commit/9c2786df11123b805266414b9157cae01d58b364))
+
 ## [4.0.0](https://github.com/iamletenkov/stvor-agent/compare/v3.1.0...v4.0.0) (2026-10-19)
 
 
