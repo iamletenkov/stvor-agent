@@ -263,7 +263,11 @@ make vuln              # govulncheck по модулю
    ставит версию и обе суммы в пин обёртки `stvor-agent` и открывает PR. Работает при переменной
    репозитория `EXTENSIONS_BUMP_ENABLED=true` (иначе — предупреждение и подъём руками). Токен — секрет
    `EXTENSIONS_DISPATCH_TOKEN` этого репозитория (fine-grained PAT на cream-extensions, Actions: Read
-   and write); истёк — job релиза покраснеет. Пины портала Stvor поднимаются вручную по его runbook.
+   and write); истёк — job релиза покраснеет.
+5. Job `dispatch-stvor` запускает в `iamletenkov/stvor` workflow `robot-pins-bump.yml` — PR с
+   `STVOR_AGENT_*` в `.env.example` портала. Выключатель — `STVOR_BUMP_ENABLED=true`, токен —
+   `STVOR_DISPATCH_TOKEN` (PAT на stvor, Actions: Read and write); без секрета — предупреждение.
+   Включить/выключить любой подъём: `gh variable set <ИМЯ> --body true` / `gh variable delete <ИМЯ>`.
    Пошагово с проверками — [runbook 01](docs/runbooks/01_release.md).
 
 Теги руками не ставят. Если сборка файлов упала, релиз уже виден без них: «Re-run failed jobs» в том же

@@ -354,3 +354,47 @@ jobs:
           fi
           gh workflow run agent-bump.yml -R "$TARGET_REPO" --ref main -f tag="$TAG"
           echo "Запущен agent-bump.yml в $TARGET_REPO для $TAG"
+
+  # Релиз поднимает пин агента в портале Stvor: запускает там
+  # robot-pins-bump.yml (component=stvor-agent), который берёт SHA256SUMS
+  # релиза, ставит STVOR_AGENT_VERSION и обе суммы в .env.example и
+  # открывает PR. Идёт после release-artifacts: до загрузки файлов сумм нет.
+  #
+  # Выключатель — переменная репозитория STVOR_BUMP_ENABLED=true. Токен —
+  # STVOR_DISPATCH_TOKEN: fine-grained PAT только на iamletenkov/stvor с
+  # правом Actions: Read and write. Нет секрета — предупреждение в журнале,
+  # job зелёный: релиз агента от портала не зависит. Повтор идемпотентен.
+  dispatch-stvor:
+    name: Bump agent in stvor
+    needs: [release-please, release-artifacts]
+    if: >-
+      !cancelled() && needs.release-artifacts.result == 'success' && (
+        needs.release-please.outputs.release_created == 'true' ||
+        (github.event_name == 'workflow_dispatch' && inputs.tag != '' && inputs.upload)
+      )
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Dispatch robot-pins-bump.yml
+        env:
+          GH_TOKEN: ${{ secrets.STVOR_DISPATCH_TOKEN }}
+          ENABLED: ${{ vars.STVOR_BUMP_ENABLED }}
+          TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
+          TARGET_REPO: iamletenkov/stvor
+        run: |
+          set -euo pipefail
+          if [ "$ENABLED" != true ]; then
+            echo "::notice::STVOR_BUMP_ENABLED не true — подъём пина $TAG в $TARGET_REPO пропущен"
+            exit 0
+          fi
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Тег релиза должен иметь вид vX.Y.Z, получено: '$TAG'"
+            exit 1
+          fi
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::Нет секрета STVOR_DISPATCH_TOKEN — подъём пина $TAG в $TARGET_REPO пропущен"
+            exit 0
+          fi
+          gh workflow run robot-pins-bump.yml -R "$TARGET_REPO" --ref main \
+            -f component=stvor-agent -f tag="$TAG"
+          echo "Запущен robot-pins-bump.yml в $TARGET_REPO для $TAG"

@@ -53,7 +53,14 @@ gh workflow run agent-bump.yml -R iamletenkov/cream-extensions -f tag=vX.Y.Z  # 
 
 ## 4. Портал Stvor
 
-Портал раздаёт роботам `.deb` агента и снимок каталога со своего зеркала по собственным пинам —
-их поднимают в репозитории Stvor по его runbook 10 (§10.1, набор установки робота). Проверка на роботе
-после установки или обновления: `stvor-agent version --short` = `X.Y.Z`, через ≤ 5 минут метка узла
-`stvor_agent=X.Y.Z` ([02](02_robot-diagnostics.md)).
+Портал раздаёт роботам `.deb` агента и снимок каталога со своего зеркала по собственным пинам
+(`STVOR_AGENT_*` в `.env.example` Stvor). Job `dispatch-stvor` запускает в `iamletenkov/stvor`
+`robot-pins-bump.yml` (`component=stvor-agent`): тот ставит версию и обе суммы из `SHA256SUMS` релиза
+и открывает PR. Работает при переменной `STVOR_BUMP_ENABLED=true` и секрете `STVOR_DISPATCH_TOKEN`
+(fine-grained PAT на stvor, Actions: Read and write); без секрета — предупреждение, релиз зелёный.
+Руками: `gh workflow run robot-pins-bump.yml -R iamletenkov/stvor -f component=stvor-agent -f tag=vX.Y.Z`.
+Выкладку на экземпляр делают в Stvor по его runbook 10 (§10.1); вся цепочка — его runbook
+«цепочка выпусков cream».
+
+Проверка на роботе после установки или обновления: `stvor-agent version --short` = `X.Y.Z`, через ≤ 5 минут
+метка узла `stvor_agent=X.Y.Z` ([02](02_robot-diagnostics.md)).
