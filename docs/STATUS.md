@@ -1,26 +1,20 @@
 # Статус stvor-agent
 
-**Фаза:** stvor-agent 4.x на Go — волна C [плана](plans/2026-10-18-stvor-agent-go.md) (упаковка, CI, документация,
-удаление 3.x). Ветка `feature/go-agent`; выпущенный релиз — 3.1.1 (bash, исправление безопасности).
+**Фаза:** выпущен 4.0.0 (Go) — [план](plans/2026-10-18-stvor-agent-go.md) закрыт (23/23). Сопровождение 4.x.
 
 ## Сделано
-- Волна A (Task 1–9): Go-служба — клиент портала, токен и состояние, адаптер `cream run teleport`, тик, цикл
-  службы, юнит, CLI; карта переноса проверок 3.x — [test-map.md](test-map.md).
-- Волна B (Task 10–13, 15): расширения `teleport` и `stvor-agent` в ветке `feature/cream-v1-pilot`
-  cream-extensions; интеграционный тест адаптера с настоящим cream.
-- Task 16: `.deb` amd64/arm64 собирает nfpm, `make repro-check` — побайтно воспроизводимо.
-- Task 18: README, SECURITY, контракт портала, AGENTS/CLAUDE и индекс — под 4.x.
-- Task 19: bash 3.x удалён из дерева (код — в тегах `v3.*`); `make contract-fixtures` сверяет образцы контракта с
-  пином и с cream-extensions; `make actionlint` — в `make lint`.
+- 4.0.0: Go-служба, `.deb` amd64/arm64 (nfpm, воспроизводимо), CI и release-please, сквозной тест в Debian 12
+  с systemd; bash 3.x удалён из `main` (код — в тегах `v3.*`).
+- Каталог cream-extensions (`main`, релиз 5.1.0): расширение `teleport` и обёртка `stvor-agent` 4.1.0 с пином
+  агента 4.0.0; машины Debian ≥ 12 и Ubuntu ≥ 20.04.
+- Портал Stvor ставит роботов на cream 1.1.2, каталог 5.1.0 и stvor-agent 4.0.0 (ADR-0031 портала).
+- Документация: README под 4.x, [runbook'и](runbooks/) — выпуск, диагностика на роботе, токен и переезд.
 
-## В работе / дальше
-1. Task 14 (CE: `apps.d` у `code-server`/`selkies`, удаление `teleport-agent`, `agent-bump`), Task 17 (CI и
-   release-please 4.0.0).
-2. Task 20 — сквозной тест в Debian 12 с systemd.
-3. Task 21 — релиз 4.0.0 (только с «да» владельца), Task 22 — приёмка на `pve-robot-1`, Task 23 — `make ci`.
-4. Портал пинит 3.1.x и переходит на 4.x своим срезом по ADR-0030
-   ([черновик](research/2026-10-18-stvor-adr-0030-draft.md)); `stvorhost` (3.0.1) не трогаем.
+## Дальше
+1. Приёмка на живом портале — задача 7 среза Stvor «Переход на cream и stvor-agent» (бывшая Task 22).
+2. Включить `EXTENSIONS_BUMP_ENABLED=true`, чтобы релиз сам поднимал пин в cream-extensions
+   ([runbook 01](runbooks/01_release.md) §3); пока — руками.
+3. `stvorhost` на 3.0.1 и роботы на 3.1.x переходят на 4.x перерегистрацией по runbook портала.
 
 ## Сломано
-- Ничего известного. Ссылки README на расширения cream-extensions ведут в `main` — заработают после слияния
-  пилота.
+- Ничего известного.

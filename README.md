@@ -12,15 +12,24 @@
   [`teleport`](https://github.com/iamletenkov/cream-extensions/blob/main/extensions/debian/teleport/README.md);
   агент о них не знает. Ставит пакет обёртка каталога
   [`stvor-agent`](https://github.com/iamletenkov/cream-extensions/blob/main/extensions/debian/stvor-agent/README.md).
-  До слияния пилота cream 1.0 оба README лежат в ветке `feature/cream-v1-pilot` репозитория
-  cream-extensions: `extensions/debian/teleport/README.md` и `extensions/debian/stvor-agent/README.md`.
+- Машины: Debian ≥ 12 и Ubuntu ≥ 20.04, `amd64` и `arm64` (юниту нужен systemd ≥ 245).
 - Признак и версию агента портал видит по динамической метке узла `stvor_agent=<версия>`: Teleport раз в
   5 минут исполняет `stvor-agent version --label`. Обновление агента Teleport не перезапускает.
 - Зависит от [cream](https://github.com/iamletenkov/cream) `>= 1.0.0` и расширения `teleport`
-  `>=4.0.0 <5`.
+  `>=4.0.0 <5` (обёртка каталога требует `teleport >=4.0.2`: с этой версии метку `stvor_agent`
+  применяет само расширение).
 
 Устройство и решения — [спека](docs/specs/2026-10-18-stvor-agent-go.md), безопасность —
-[SECURITY.md](SECURITY.md), изменения — [CHANGELOG.md](CHANGELOG.md).
+[SECURITY.md](SECURITY.md), изменения — [CHANGELOG.md](CHANGELOG.md), вся документация —
+[docs/README.md](docs/README.md).
+
+## Runbook'и
+
+| Runbook | Когда |
+|---|---|
+| [01 — выпуск версии](docs/runbooks/01_release.md) | release-please, `.deb` и `SHA256SUMS` к релизу, подъём пина в cream-extensions и на портале |
+| [02 — диагностика на роботе](docs/runbooks/02_robot-diagnostics.md) | `status --json`, журнал службы, файл токена, метка `stvor_agent` в Teleport |
+| [03 — перевыпуск токена и переезд робота](docs/runbooks/03_token-reissue-and-move.md) | токен утёк или отозван, смена домена портала, замена машины, вывод из работы |
 
 ## Установка
 
@@ -43,8 +52,9 @@ printf '%s' "$TOKEN" | stvor-agent enable URL=https://<домен>/robot-api/v1/
 
 - У `join` один секрет — `TELEPORT_REGISTRATION_SECRET=-` со stdin: для метода `token` это сам
   join-токен, для `bound_keypair` — секрет регистрации; `TELEPORT_TOKEN` — несекретное имя токена.
-- `cream install stvor-agent` сверяет sha256 `.deb` архитектуры машины и ставит пакет, но службу не
-  включает и токена не принимает. Без явных версии и суммы берётся пин каталога.
+- `cream install stvor-agent` сверяет sha256 `.deb` архитектуры машины и ставит пакет; юнит включает
+  пакет, но служба не стартует, пока нет `/etc/stvor-agent/token`. Токена обёртка не принимает. Без
+  явных версии и суммы берётся пин каталога.
 - `stvor-agent enable` читает токен меток со stdin, пишет `/etc/stvor-agent/token`, включает и
   запускает службу и сразу делает один синхронный `sync`.
 - Офлайн: `--archive file:///<каталог>/cream-extensions-<v>.tar.gz`, `TELEPORT_TARBALL=…`,
@@ -187,6 +197,9 @@ cream run teleport managed-status  # то, что видит агент (JSON)
 | `result=unconfirmed`, `reason=paused` | агент Teleport не подтвердил перезапуск; после трёх раз — пауза 15 мин (`sync` её обходит) |
 | «в расширении teleport нет действий managed-status/set-managed» | стоит `teleport` старше 4.0.0 — обновить расширение |
 
+Пошагово — [runbook 02](docs/runbooks/02_robot-diagnostics.md); токен и переезд —
+[runbook 03](docs/runbooks/03_token-reissue-and-move.md).
+
 ## Отличия от 3.x
 
 4.x — новая реализация, а не обновление: переходного пакета и миграции нет.
@@ -247,15 +260,17 @@ make vuln              # govulncheck по модулю
    `release-artifacts` собирает из тега `stvor-agent_<v>_amd64.deb`, `stvor-agent_<v>_arm64.deb` и
    `SHA256SUMS` и прикладывает их к релизу.
 4. Job `dispatch-extensions` запускает в `iamletenkov/cream-extensions` workflow `agent-bump.yml`: тот
-   ставит версию и обе суммы в пин обёртки `stvor-agent` и открывает PR. Токен — секрет
+   ставит версию и обе суммы в пин обёртки `stvor-agent` и открывает PR. Работает при переменной
+   репозитория `EXTENSIONS_BUMP_ENABLED=true` (иначе — предупреждение и подъём руками). Токен — секрет
    `EXTENSIONS_DISPATCH_TOKEN` этого репозитория (fine-grained PAT на cream-extensions, Actions: Read
    and write); истёк — job релиза покраснеет. Пины портала Stvor поднимаются вручную по его runbook.
+   Пошагово с проверками — [runbook 01](docs/runbooks/01_release.md).
 
 Теги руками не ставят. Если сборка файлов упала, релиз уже виден без них: «Re-run failed jobs» в том же
-прогоне или ручной запуск с `release_tag`:
+прогоне или ручной запуск с `tag` (без `upload=true` — сухой прогон):
 
 ```bash
-gh workflow run ci-release.yml --ref main -f release_tag=vX.Y.Z
+gh workflow run ci-release.yml --ref main -f tag=vX.Y.Z -f upload=true
 ```
 
 ## Лицензия
