@@ -201,7 +201,10 @@ jobs:
         with:
           config-file: .github/release_please/release-please-config.json
           manifest-file: .github/release_please/.release-please-manifest.json
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # PAT владельца (RELEASE_PR_TOKEN): PR релиза от GITHUB_TOKEN не запускает
+          # CI. Тег и релиз от PAT ничего не запускают — триггеров на теги и
+          # релизы нет. Без секрета — GITHUB_TOKEN, как раньше.
+          token: ${{ secrets.RELEASE_PR_TOKEN || secrets.GITHUB_TOKEN }}
 
   # Ассеты релиза: после release-please, создавшего релиз, или вручную по tag.
   # На ручном запуске release-please пропущен — !cancelled() не даёт пропуску
