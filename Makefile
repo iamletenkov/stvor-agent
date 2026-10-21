@@ -4,7 +4,7 @@
 # Версия — из VERSION=<v> (CI берёт её из тега релиза); без неё — 0.0.0-dev: версия
 # .deb обязана начинаться с цифры, а бинарь и пакет несут одну и ту же строку.
 
-GO_IMAGE       ?= golang:1.26.9
+GO_IMAGE       ?= golang:1.26.10
 GOLANGCI_IMAGE ?= golangci/golangci-lint:v2.14.0
 NFPM_IMAGE     ?= goreleaser/nfpm:v2.47.0
 DEBIAN_IMAGE   ?= debian:13
