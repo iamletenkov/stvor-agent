@@ -1,8 +1,17 @@
-# 01 — Выпуск версии
+# Выпуск версии
 
-Кто: владелец репозитория (слияние релизного PR — только с его «да»). Подробности процесса — skill
-[`/release`](../../.claude/skills/release/SKILL.md) и раздел «Как выпустить версию» [README](../../README.md#как-выпустить-версию).
-Теги руками не ставят, `CHANGELOG.md` руками не правят.
+Кто: владелец репозитория (слияние релизного PR — только с его «да»). Теги руками не ставят,
+`CHANGELOG.md` руками не правят.
+
+Версию и `CHANGELOG.md` ведёт [release-please](https://github.com/googleapis/release-please)
+(`.github/release_please/`, workflow `CI and Release`). В `main` уходят коммиты по Conventional Commits:
+`fix:` поднимает patch, `feat:` — minor, `!` или `BREAKING CHANGE:` — major; `docs:`, `ci:`, `chore:`,
+`build:` версию не трогают. После проверок на `main` release-please открывает (и дальше обновляет) PR
+«chore(main): release X.Y.Z». Релиз затем:
+
+1. собирает и прикладывает к релизу оба `.deb` и `SHA256SUMS` (job `release-artifacts`);
+2. поднимает пин обёртки в cream-extensions (job `dispatch-extensions`) — §3;
+3. поднимает пин на портале Stvor (job `dispatch-stvor`) — §4.
 
 ## 1. Релизный PR
 
@@ -63,4 +72,4 @@ gh workflow run agent-bump.yml -R iamletenkov/cream-extensions -f tag=vX.Y.Z  # 
 «цепочка выпусков cream».
 
 Проверка на роботе после установки или обновления: `stvor-agent version --short` = `X.Y.Z`, через ≤ 5 минут
-метка узла `stvor_agent=X.Y.Z` ([02](02_robot-diagnostics.md)).
+метка узла `stvor_agent=X.Y.Z` ([диагностика](../guides/diagnostics.md)).

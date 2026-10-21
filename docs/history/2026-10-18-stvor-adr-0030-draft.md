@@ -1,5 +1,9 @@
 # 0030. stvor-agent и расширение `teleport` каталога cream: бутстрап робота с зеркала портала
 
+> Исторический документ (2026-10-18): черновик для портала Stvor, принят там как
+> [ADR-0031](https://github.com/iamletenkov/stvor/blob/main/docs/adr/0031-cream-stvor-agent-bootstrap.md).
+> Не обновляется.
+
 - **Status:** Proposed (Accepted — после выкладки среза на стенд: переустановленная `pve-robot-1` регистрируется одной
   командой портала с зеркала по пинам, узел несёт `space`, `env`, `stvor_agent=<версия>`; перенос робота в другое
   пространство и обратно завершается сверкой, узел и приложение меняют `space` вместе; `arm64-gate` и
@@ -9,9 +13,9 @@
   `.deb` по архитектурам, служба; Teleport-логика — расширение `teleport`; без переходной совместимости; контракт
   `/robot-api/v1/labels` не меняется — 2026-10-18), контроллер (рулинги Р1 «метка `stvor_agent`» и Р2 «бутстрап»)
 - **Tags:** backend, infra, security, teleport, robots
-- **Supersedes:** [0016](0016-bisquite-agent-package-mirror.md) — целиком
-- **Уточняет:** [0013](0013-robot-label-pull.md) (клиент меток), [0015](0015-teleport-downloads-mirror.md) и
-  [0022](0022-teleport-download-versions.md) (новые файлы зеркала и манифеста), [0025](0025-workstation-personal-robot.md)
+- **Supersedes:** [0016](https://github.com/iamletenkov/stvor/blob/main/docs/adr/0016-bisquite-agent-package-mirror.md) — целиком
+- **Уточняет:** [0013](https://github.com/iamletenkov/stvor/blob/main/docs/adr/0013-robot-label-pull.md) (клиент меток), [0015](https://github.com/iamletenkov/stvor/blob/main/docs/adr/0015-teleport-downloads-mirror.md) и
+  [0022](https://github.com/iamletenkov/stvor/blob/main/docs/adr/0022-teleport-download-versions.md) (новые файлы зеркала и манифеста), [0025](https://github.com/iamletenkov/stvor/blob/main/docs/adr/0025-workstation-personal-robot.md)
   (способ установки рабочей станции)
 
 ## Контекст и проблема
@@ -215,12 +219,12 @@ Go-бинарь, `.deb` **по архитектуре** (amd64, arm64), долг
 - [Спека stvor-agent](https://github.com/iamletenkov/stvor-agent/blob/main/docs/specs/2026-10-18-stvor-agent-go.md) — агент и расширение `teleport`
 - [Спека cream](https://github.com/iamletenkov/cream/blob/main/docs/specs/2026-10-18-cream-core.md) — формат расширения, исполнитель, MVP
 - `.scratchpad`-описи 2026-10-18: раздел агента и система расширений (войдут в `docs/research/` спекой среза)
-- [ADR-0016](0016-bisquite-agent-package-mirror.md) — заменяется
-- [ADR-0013](0013-robot-label-pull.md) — контракт меток (не меняется), клиент меток
-- [ADR-0015](0015-teleport-downloads-mirror.md), [ADR-0022](0022-teleport-download-versions.md) — зеркало и манифест
-- [ADR-0025](0025-workstation-personal-robot.md) — рабочая станция
-- [ADR-0004](0004-teleport-integration.md) — форк Teleport, `bound_keypair`
-- [runbook 10](../runbooks/10_robot-enrollment.md) — регистрация роботов
+- [ADR-0016](https://github.com/iamletenkov/stvor/blob/main/docs/adr/0016-bisquite-agent-package-mirror.md) — заменяется
+- [ADR-0013](https://github.com/iamletenkov/stvor/blob/main/docs/adr/0013-robot-label-pull.md) — контракт меток (не меняется), клиент меток
+- [ADR-0015](https://github.com/iamletenkov/stvor/blob/main/docs/adr/0015-teleport-downloads-mirror.md), [ADR-0022](https://github.com/iamletenkov/stvor/blob/main/docs/adr/0022-teleport-download-versions.md) — зеркало и манифест
+- [ADR-0025](https://github.com/iamletenkov/stvor/blob/main/docs/adr/0025-workstation-personal-robot.md) — рабочая станция
+- [ADR-0004](https://github.com/iamletenkov/stvor/blob/main/docs/adr/0004-teleport-integration.md) — форк Teleport, `bound_keypair`
+- [runbook 10](https://github.com/iamletenkov/stvor/blob/main/docs/runbooks/10_robot-enrollment.md) — регистрация роботов
 
 ---
 

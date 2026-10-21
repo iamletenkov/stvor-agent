@@ -1,8 +1,8 @@
-# 02 — Диагностика на роботе
+# Диагностика
 
 Когда: карточка робота в портале показывает «Метки расходятся», «без stvor-agent» или нет версии агента;
 перенос робота в другое пространство не завершается. Команды — на роботе от root (кроме `version`).
-Таблица признаков — раздел «Диагностика» [README](../../README.md#диагностика).
+Быстрые признаки — [в конце](#признаки-и-что-делать).
 
 ## 1. Состояние агента
 
@@ -16,10 +16,10 @@ systemctl status stvor-agent.service
 
 | Поле | Норма | Если не так |
 |---|---|---|
-| `enabled` | `true` | `false` — агент не включён: [03](03_token-reissue-and-move.md) §1; `null` — запуск не от root |
-| `token` | `ok` | `absent` — не включён; `bad_mode`, `bad_owner`, `no_access`, `corrupt` — файл токена испорчен или права не 0600 root: `enable` заново ([03](03_token-reissue-and-move.md)) |
-| `url` | адрес портала `https://<домен>/robot-api/v1/labels` | другой портал — [03](03_token-reissue-and-move.md) §3 |
-| `last_poll.outcome` | `ok` или `not_modified` | `unauthorized` — токен отозван или перевыпущен ([03](03_token-reissue-and-move.md) §2); `network`, `http_error`, `rate_limited` — сеть или портал, служба повторит; `bad_body` — ответ не по [контракту](../portal-labels-api.md) |
+| `enabled` | `true` | `false` — агент не включён: [«Токен и переезд»](token-and-move.md) §1; `null` — запуск не от root |
+| `token` | `ok` | `absent` — не включён; `bad_mode`, `bad_owner`, `no_access`, `corrupt` — файл токена испорчен или права не 0600 root: `enable` заново ([«Токен и переезд»](token-and-move.md)) |
+| `url` | адрес портала `https://<домен>/robot-api/v1/labels` | другой портал — [«Токен и переезд»](token-and-move.md) §3 |
+| `last_poll.outcome` | `ok` или `not_modified` | `unauthorized` — токен отозван или перевыпущен ([«Токен и переезд»](token-and-move.md) §2); `network`, `http_error`, `rate_limited` — сеть или портал, служба повторит; `bad_body` — ответ не по [контракту](../reference/portal-labels-api.md) |
 | `in_effect` | `true` | метки портала ещё не применены — см. `teleport` и `restart` |
 | `teleport.joined` / `teleport.active` | `true` / `true` | узел не зарегистрирован (`sudo cream run teleport status`) или агент Teleport не работает |
 | `teleport.pending` | `false` | `true` — перезапуск Teleport с новыми метками ещё не подтверждён |
@@ -45,7 +45,7 @@ sudo stvor-agent status --json | grep -E '"(token|url)"'
 ```
 
 Содержимое файла (`url=`, `token=`) не выводить и не пересылать. Права или владелец не те — не чинить
-`chmod`-ом, а включить заново с токеном ([03](03_token-reissue-and-move.md) §1): `enable` пишет файл
+`chmod`-ом, а включить заново с токеном ([«Токен и переезд»](token-and-move.md) §1): `enable` пишет файл
 атомарно с правильными правами.
 
 ## 4. Метки в Teleport
@@ -74,3 +74,16 @@ tsh ls stvor_agent=<X.Y.Z>               # узлы с этой версией �
 `env`/`space` узла не совпадают с порталом при `last_poll.outcome=ok` — смотреть `event=apply` в журнале
 и `teleport.pending`; ручной запасной путь — `sudo stvor-agent apply env=<v> space=<v>` (следующий тик
 вернёт решение портала).
+
+## Признаки и что делать
+
+| Признак | Что значит |
+|---|---|
+| `токен: absent`, служба `inactive` | агент не включён — `stvor-agent enable` ([токен](token-and-move.md#1-включить-агент-токена-нет-или-файл-испорчен)) |
+| `токен: bad_mode` / `bad_owner` / `corrupt` | файл токена не 0600 root или испорчен — `enable` заново; токен не отправляется |
+| `outcome=unauthorized` | портал отозвал токен — выпустить новый в карточке робота и `enable` |
+| `outcome=rate_limited`, `network`, `http_error`, `redirect` | ошибка портала или сети — служба повторит с backoff |
+| `outcome=bad_body` | ответ не по [контракту](../reference/portal-labels-api.md) — метки не тронуты |
+| `result=deferred` | узел не зарегистрирован в Teleport — метки применятся после `join` |
+| `result=unconfirmed`, `reason=paused` | агент Teleport не подтвердил перезапуск; после трёх раз — пауза 15 мин (`sync` её обходит) |
+| «в расширении teleport нет действий managed-status/set-managed» | стоит `teleport` старше 4.0.0 — обновить расширение |

@@ -427,7 +427,7 @@ func TestTimeoutKillsProcessGroup(t *testing.T) {
 }
 
 // TestTimeoutStopsCream: cream runs the action in a process group of its own
-// and kills it on SIGTERM (cream docs/cli.md, «Поведение процесса»), so on
+// and kills it on SIGTERM (cream docs/reference/cli.md, «Поведение процесса»), so on
 // timeout the adapter sends SIGTERM to the group of cream and SIGKILL only
 // after KillGrace — a SIGKILL first would orphan the action (found by the
 // integration test against the real cream, plan Task 15).

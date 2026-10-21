@@ -3,7 +3,7 @@
 **stvor-agent** (бывший bisquite-teleport-agent) — служба портала Stvor на машине (робот, стенд, сервер): Go-бинарь
 `/usr/bin/stvor-agent`, юнит `stvor-agent.service`, пакеты `stvor-agent_<версия>_{amd64,arm64}.deb`. Забирает с портала
 метки `env`/`space` и применяет их через расширение `teleport` каталога cream. Лицензия PolyForm Noncommercial (не
-менять без решения владельца). Что умеет и как ставится — [README.md](README.md); состояние — [docs/STATUS.md](docs/STATUS.md).
+менять без решения владельца). Что умеет и как ставится — [README.md](README.md) и [docs/](docs/README.md); состояние — [docs/STATUS.md](docs/STATUS.md).
 
 **Курс выполнен:** агент переписан на Go (спека [docs/specs/2026-10-18-stvor-agent-go.md](docs/specs/2026-10-18-stvor-agent-go.md),
 план [docs/plans/2026-10-18-stvor-agent-go.md](docs/plans/2026-10-18-stvor-agent-go.md)), регистрация в Teleport уехала в
@@ -12,7 +12,7 @@
 плана); его код — в тегах `v3.*`, исправления 3.1.x выпускаются из своей ветки, не из `main`.
 
 ## Место в экосистеме
-- **Stvor** — приватный портал (identity & access hub); агент ходит в его robot-API ([docs/portal-labels-api.md](docs/portal-labels-api.md)).
+- **Stvor** — приватный портал (identity & access hub); агент ходит в его robot-API ([docs/reference/portal-labels-api.md](docs/reference/portal-labels-api.md)).
 - **cream** — исполнитель расширений (Go); агент зовёт `cream run teleport managed-status|set-managed`.
 - **cream-extensions** — каталог: расширение `teleport` (регистрация, `teleport.yaml`, управляемые метки) и обёртка
   `stvor-agent`, которая ставит этот пакет по пину версии и sha256 (пин поднимает `agent-bump` после релиза).
@@ -35,7 +35,7 @@ packaging/         — юнит stvor-agent.service (+ unit_test.go), nfpm.yaml,
 test/integration/  — адаптер против настоящего cream в debian:12 (`make test-integration`)
 test/e2e/          — сквозной тест в debian:12 с systemd: cream, каталог по пину, fakeportal (`make e2e`)
 tools/             — check-test-map, check-contract-fixtures (+ пин contract-fixtures.sha256), check-deb, check-deb-live, repro-check
-docs/              — README.md (индекс), STATUS.md, portal-labels-api.md, test-map.md, runbooks/, adr/, specs/, plans/, research/
+docs/              — README.md (индекс), getting-started.md, guides/ (по задачам), reference/ (CLI, настройки, контракт портала), architecture.md, development.md, runbooks/ (выпуск), test-map.md, history/, adr/, specs/, plans/, research/, STATUS.md
 .claude/           — агенты, skills, правила, хуки Claude Code
 Makefile           — публичный API (`make help`): lint, actionlint, contract-fixtures, test, build-all, deb, repro-check, vuln, test-integration, e2e, ci
 ```

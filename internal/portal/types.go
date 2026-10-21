@@ -1,5 +1,5 @@
 // Package portal is the client of the Stvor robot API /robot-api/v1/labels
-// (spec §5.4, docs/portal-labels-api.md).
+// (spec §5.4, docs/reference/portal-labels-api.md).
 package portal
 
 // Labels are the desired managed labels the portal assigns to the machine.
