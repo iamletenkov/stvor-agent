@@ -9,7 +9,8 @@
 - Каталог cream-extensions (`main`, релиз 5.1.0): расширение `teleport` и обёртка `stvor-agent` 4.1.0 с пином
   агента 4.0.0; машины Debian ≥ 12 и Ubuntu ≥ 20.04.
 - Портал Stvor ставит роботов на cream 1.1.2, каталог 5.1.0 и stvor-agent 4.0.0 (ADR-0031 портала).
-- Документация: README под 4.x, [runbook'и](runbooks/) — выпуск, диагностика на роботе, токен и переезд.
+- Документация: README, [первые шаги](getting-started.md), [руководства](guides/), [справочник](reference/cli.md),
+  [runbook выпуска](runbooks/01_release.md).
 
 ## Дальше
 1. Приёмка на живом портале — задача 7 среза Stvor «Переход на cream и stvor-agent» (бывшая Task 22).
