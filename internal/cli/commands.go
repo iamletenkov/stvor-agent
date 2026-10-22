@@ -38,6 +38,9 @@ func (a *App) runService(stderr io.Writer) int {
 
 	log.Info("служба запущена", "event", "start", "version", version.Short(a.Version),
 		"interval", cfg.Interval)
+	if err := a.ensureMachineID(); err != nil {
+		log.Warn("machine-id агента не создан", "event", "start", "path", a.MachineIDPath, "err", err)
+	}
 	d := &daemon.Daemon{Ticker: a.ticker(log), Lock: a.Lock, Interval: cfg.Interval, Log: log}
 	d.Run(context.Background(), sigs)
 	return exitOK
@@ -79,7 +82,7 @@ func (a *App) runEnable(url string, stdin io.Reader, stdout, stderr io.Writer) i
 		_, _ = fmt.Fprintln(stdout, "адрес портала другой — прежнее состояние сброшено")
 	}
 
-	for _, step := range []func(context.Context, string) error{a.Systemctl.Enable, a.Systemctl.Restart} {
+	for _, step := range []func(context.Context, string) error{a.Init.Enable, a.Init.Restart} {
 		if err := step(ctx, Unit); err != nil {
 			_, _ = fmt.Fprintf(stderr, "stvor-agent: enable: токен записан, но служба не запущена: %v\n", err)
 			return exitError
@@ -167,11 +170,11 @@ func (a *App) resetStateFor(url string) (bool, error) {
 func (a *App) runDisable(stdout, stderr io.Writer) int {
 	ctx := context.Background()
 	code := exitOK
-	if err := a.Systemctl.DisableNow(ctx, Unit); err != nil {
+	if err := a.Init.DisableNow(ctx, Unit); err != nil {
 		_, _ = fmt.Fprintf(stderr, "stvor-agent: disable: служба не остановлена: %v\n", err)
 		code = exitError
 	}
-	if err := a.Systemctl.Stop(ctx, reconcile.TelemetryUnit); err != nil {
+	if err := a.Init.Stop(ctx, reconcile.TelemetryUnit); err != nil {
 		_, _ = fmt.Fprintf(stderr, "stvor-agent: disable: служба телеметрии не остановлена: %v\n", err)
 		code = exitError
 	}

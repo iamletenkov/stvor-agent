@@ -1,4 +1,4 @@
-package systemd_test
+package initsys_test
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/iamletenkov/stvor-agent/internal/systemd"
+	"github.com/iamletenkov/stvor-agent/internal/initsys"
 )
 
 // The fake systemctl is this test binary reached through a symlink named
@@ -27,7 +27,7 @@ type record struct {
 }
 
 func TestMain(m *testing.M) {
-	if filepath.Base(os.Args[0]) == fakeName {
+	if b := filepath.Base(os.Args[0]); b == fakeName || procdScripts[b] {
 		os.Exit(fakeSystemctl())
 	}
 	os.Exit(m.Run())
@@ -44,11 +44,25 @@ func fakeSystemctl() int {
 	if os.WriteFile(filepath.Join(dir, "record.json"), out, 0o600) != nil {
 		return 121
 	}
+	// Every call in order, with the name it was started by (procd scripts).
+	call, _ := json.Marshal(struct {
+		Script string
+		Args   []string
+		Env    []string
+	}{filepath.Base(os.Args[0]), os.Args[1:], os.Environ()})
+	f, err := os.OpenFile(filepath.Join(dir, "calls.jsonl"), os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o600)
+	if err != nil {
+		return 122
+	}
+	_, err = f.Write(append(call, '\n'))
+	if f.Close() != nil || err != nil {
+		return 122
+	}
 	_, _ = os.Stdout.WriteString(sc.Stdout)
 	return sc.Exit
 }
 
-func fake(t *testing.T, sc scenario) (systemd.Exec, string) {
+func fake(t *testing.T, sc scenario) (initsys.Systemd, string) {
 	t.Helper()
 	self, err := os.Executable()
 	if err != nil {
@@ -63,7 +77,7 @@ func fake(t *testing.T, sc scenario) (systemd.Exec, string) {
 	if err := os.WriteFile(filepath.Join(dir, "scenario.json"), data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	return systemd.Exec{Path: path}, dir
+	return initsys.Systemd{Path: path}, dir
 }
 
 func seen(t *testing.T, dir string) record {
@@ -85,14 +99,14 @@ func TestExecCommands(t *testing.T) {
 	const unit = "stvor-agent.service"
 	tests := []struct {
 		name string
-		call func(context.Context, systemd.Exec) error
+		call func(context.Context, initsys.Systemd) error
 		want []string
 	}{
-		{"enable", func(ctx context.Context, e systemd.Exec) error { return e.Enable(ctx, unit) }, []string{"enable", unit}},
-		{"restart", func(ctx context.Context, e systemd.Exec) error { return e.Restart(ctx, unit) }, []string{"restart", unit}},
-		{"disable --now", func(ctx context.Context, e systemd.Exec) error { return e.DisableNow(ctx, unit) }, []string{"disable", "--now", unit}},
-		{"start", func(ctx context.Context, e systemd.Exec) error { return e.Start(ctx, unit) }, []string{"start", unit}},
-		{"stop", func(ctx context.Context, e systemd.Exec) error { return e.Stop(ctx, unit) }, []string{"stop", unit}},
+		{"enable", func(ctx context.Context, e initsys.Systemd) error { return e.Enable(ctx, unit) }, []string{"enable", unit}},
+		{"restart", func(ctx context.Context, e initsys.Systemd) error { return e.Restart(ctx, unit) }, []string{"restart", unit}},
+		{"disable --now", func(ctx context.Context, e initsys.Systemd) error { return e.DisableNow(ctx, unit) }, []string{"disable", "--now", unit}},
+		{"start", func(ctx context.Context, e initsys.Systemd) error { return e.Start(ctx, unit) }, []string{"start", unit}},
+		{"stop", func(ctx context.Context, e initsys.Systemd) error { return e.Stop(ctx, unit) }, []string{"stop", unit}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -118,7 +132,7 @@ func TestExecFailure(t *testing.T) {
 	if err := e.Enable(t.Context(), "stvor-agent.service"); err == nil {
 		t.Error("exit 1: err = nil, want an error")
 	}
-	missing := systemd.Exec{Path: filepath.Join(t.TempDir(), "absent")}
+	missing := initsys.Systemd{Path: filepath.Join(t.TempDir(), "absent")}
 	if err := missing.Restart(t.Context(), "stvor-agent.service"); err == nil {
 		t.Error("missing binary: err = nil, want an error")
 	}
@@ -149,7 +163,7 @@ func TestExecIsActive(t *testing.T) {
 			}
 		})
 	}
-	missing := systemd.Exec{Path: filepath.Join(t.TempDir(), "absent")}
+	missing := initsys.Systemd{Path: filepath.Join(t.TempDir(), "absent")}
 	if got := missing.IsActive(t.Context(), "stvor-agent.service"); got != "unknown" {
 		t.Errorf("missing binary: IsActive = %q, want unknown", got)
 	}
@@ -157,7 +171,7 @@ func TestExecIsActive(t *testing.T) {
 
 func TestFake(t *testing.T) {
 	t.Parallel()
-	f := &systemd.Fake{Active: "active", RestartErr: os.ErrPermission}
+	f := &initsys.Fake{Active: "active", RestartErr: os.ErrPermission}
 	ctx := t.Context()
 	_ = f.Enable(ctx, "u")
 	if err := f.Restart(ctx, "u"); err == nil {
@@ -173,7 +187,7 @@ func TestFake(t *testing.T) {
 	if got := f.Calls(); !slices.Equal(got, want) {
 		t.Errorf("Calls = %q, want %q", got, want)
 	}
-	if got := (&systemd.Fake{}).IsActive(ctx, "u"); got != "inactive" {
+	if got := (&initsys.Fake{}).IsActive(ctx, "u"); got != "inactive" {
 		t.Errorf("zero Fake IsActive = %q, want inactive", got)
 	}
 }

@@ -57,6 +57,21 @@ journalctl -u stvor-agent -n 20     # следующий опрос: event=poll 
 `apt remove` выключает и останавливает службу; `apt purge` удаляет `/etc/stvor-agent` и
 `/var/lib/stvor-agent`.
 
+### OpenWrt
+
+Семейство агент определяет сам по `ID`/`ID_LIKE` из `/etc/os-release` (`openwrt`, `lede`); на остальных
+системах всё как выше. На OpenWrt `/var` — tmpfs, поэтому:
+
+| Что | Debian/Ubuntu | OpenWrt |
+|---|---|---|
+| `state.json` | `/var/lib/stvor-agent/state.json` | `/opt/stvor-agent/state.json` |
+| состояние телеметрии | `/var/lib/stvor-agent-telemetry/` | `/opt/stvor-agent/telemetry/` |
+| machine-id | `/etc/machine-id` | `/opt/stvor-agent/machine-id` — создаёт `run` при первом старте (128 случайных бит, 0640 `root:stvor-telemetry`; без группы — 0600, группа получает его на следующем старте), содержимое не меняется |
+| службы | `systemctl … stvor-agent.service` | `/etc/init.d/stvor-agent enable\|restart\|stop\|disable` (procd) |
+| расширение cream | `teleport` | `teleport-openwrt` |
+
+Токены (`/etc/stvor-agent/token`, `/etc/stvor-agent-telemetry/token`) и `/run/stvor-agent.lock` — те же.
+
 ## Служба
 
 - Юнит стартует только при наличии токена (`ConditionPathExists=/etc/stvor-agent/token`), после

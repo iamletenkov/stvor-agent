@@ -13,6 +13,9 @@ import (
 // Defaults of the cream adapter (spec §5.7).
 const (
 	DefaultCreamPath = "/usr/bin/cream"
+	// DefaultExtension is the cream extension on Debian/Ubuntu; OpenWrt has
+	// teleport-openwrt (spec OpenWrt R11).
+	DefaultExtension = "teleport"
 	// DefaultStatusTimeout bounds managed-status (lock: none, no side effects).
 	DefaultStatusTimeout = 15 * time.Second
 	// DefaultSetTimeout bounds set-managed: lock wait ≤ 20 s + confirmed
@@ -58,13 +61,17 @@ var (
 //	cream run --lock-timeout 20s teleport set-managed env=<v> space=<v>
 //	cream actions teleport --json
 //
+// with Extension in place of teleport (teleport-openwrt on OpenWrt).
 // argv as a list, no shell, the environment exactly creamEnv(), stdin /dev/null,
 // cwd "/", its own process group. On timeout the group gets SIGTERM — cream
 // then stops the action, whose group is its own — and SIGKILL after KillGrace. Both actions are
 // `output: json` and are called without --json, so stdout is the action's
 // object as is (cream §7.2). Zero durations take the defaults.
 type CreamTeleport struct {
-	Path           string
+	Path string
+	// Extension is the name of the extension in the catalog ("" —
+	// DefaultExtension).
+	Extension      string
 	StatusTimeout  time.Duration
 	SetTimeout     time.Duration
 	ActionsTimeout time.Duration
@@ -82,6 +89,7 @@ func NewCream(path string) *CreamTeleport {
 	}
 	return &CreamTeleport{
 		Path:           path,
+		Extension:      DefaultExtension,
 		StatusTimeout:  DefaultStatusTimeout,
 		SetTimeout:     DefaultSetTimeout,
 		ActionsTimeout: DefaultActionsTimeout,
@@ -94,7 +102,7 @@ var _ Teleport = (*CreamTeleport)(nil)
 // Status runs managed-status. It follows ctx: the action has no side effects.
 func (c *CreamTeleport) Status(ctx context.Context) (Status, error) {
 	code, out, err := c.run(ctx, orDefault(c.StatusTimeout, DefaultStatusTimeout),
-		"run", "teleport", "managed-status")
+		"run", c.extension(), "managed-status")
 	if err != nil {
 		return Status{}, fmt.Errorf("managed-status: %w", err)
 	}
@@ -117,7 +125,7 @@ func (c *CreamTeleport) SetManaged(ctx context.Context, l Labels) (SetResult, er
 		return SetResult{}, fmt.Errorf("set-managed: %w: env или space вне алфавита меток", ErrInvalidInput)
 	}
 	code, out, err := c.run(context.WithoutCancel(ctx), orDefault(c.SetTimeout, DefaultSetTimeout),
-		"run", "--lock-timeout", setLockTimeout, "teleport", "set-managed",
+		"run", "--lock-timeout", setLockTimeout, c.extension(), "set-managed",
 		"env="+l.Env, "space="+l.Space)
 	if err != nil {
 		return SetResult{}, fmt.Errorf("set-managed: %w", err)
@@ -141,7 +149,7 @@ func (c *CreamTeleport) SetManaged(ctx context.Context, l Labels) (SetResult, er
 // log it, keep applying).
 func (c *CreamTeleport) CheckActions(ctx context.Context) error {
 	code, out, err := c.run(ctx, orDefault(c.ActionsTimeout, DefaultActionsTimeout),
-		"actions", "teleport", "--json")
+		"actions", c.extension(), "--json")
 	if err != nil {
 		return fmt.Errorf("cream actions: %w", err)
 	}
@@ -248,6 +256,13 @@ func (c *CreamTeleport) run(ctx context.Context, timeout time.Duration, args ...
 		return 0, nil, bad("stdout длиннее %d байт", MaxOutput)
 	}
 	return cmd.ProcessState.ExitCode(), stdout.buf, nil
+}
+
+func (c *CreamTeleport) extension() string {
+	if c.Extension == "" {
+		return DefaultExtension
+	}
+	return c.Extension
 }
 
 func orDefault(d, def time.Duration) time.Duration {

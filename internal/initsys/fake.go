@@ -1,11 +1,11 @@
-package systemd
+package initsys
 
 import (
 	"context"
 	"sync"
 )
 
-// Fake is an in-memory Systemctl for tests. It records every call as
+// Fake is an in-memory Manager (systemd or procd) for tests. It records every call as
 // "<verb> <unit>" and answers from its fields. It is safe for concurrent use.
 type Fake struct {
 	mu sync.Mutex
@@ -17,34 +17,34 @@ type Fake struct {
 	calls []string
 }
 
-var _ Systemctl = (*Fake)(nil)
+var _ Manager = (*Fake)(nil)
 
-// Enable implements Systemctl.
+// Enable implements Manager.
 func (f *Fake) Enable(_ context.Context, unit string) error {
 	return f.record("enable "+unit, f.EnableErr)
 }
 
-// Restart implements Systemctl.
+// Restart implements Manager.
 func (f *Fake) Restart(_ context.Context, unit string) error {
 	return f.record("restart "+unit, f.RestartErr)
 }
 
-// DisableNow implements Systemctl.
+// DisableNow implements Manager.
 func (f *Fake) DisableNow(_ context.Context, unit string) error {
 	return f.record("disable --now "+unit, f.DisableErr)
 }
 
-// Start implements Systemctl.
+// Start implements Manager.
 func (f *Fake) Start(_ context.Context, unit string) error {
 	return f.record("start "+unit, f.StartErr)
 }
 
-// Stop implements Systemctl.
+// Stop implements Manager.
 func (f *Fake) Stop(_ context.Context, unit string) error {
 	return f.record("stop "+unit, f.StopErr)
 }
 
-// IsActive implements Systemctl.
+// IsActive implements Manager.
 func (f *Fake) IsActive(_ context.Context, unit string) string {
 	_ = f.record("is-active "+unit, nil)
 	f.mu.Lock()

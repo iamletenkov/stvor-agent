@@ -112,7 +112,7 @@ func (a *App) collectStatus(ctx context.Context) (statusDoc, []string) {
 	doc := statusDoc{
 		Schema:  statusSchema,
 		Version: version.Short(a.Version),
-		Service: a.Systemctl.IsActive(ctx, Unit),
+		Service: a.Init.IsActive(ctx, Unit),
 		Token:   "ok",
 	}
 	doc.Telemetry = a.collectTelemetry(ctx)
