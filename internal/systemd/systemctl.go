@@ -1,5 +1,6 @@
 // Package systemd is the agent's view of systemctl: enable, restart and
-// disable --now of its own unit, and is-active for `status` (spec §8).
+// disable --now of its own unit, start/stop of the telemetry unit, and is-active
+// for `status` (spec §8).
 package systemd
 
 import (
@@ -32,6 +33,10 @@ type Systemctl interface {
 	Enable(ctx context.Context, unit string) error
 	Restart(ctx context.Context, unit string) error
 	DisableNow(ctx context.Context, unit string) error
+	// Start and Stop run `systemctl start|stop <unit>` (the telemetry
+	// service: started by `run` once its token is there, stopped by `disable`).
+	Start(ctx context.Context, unit string) error
+	Stop(ctx context.Context, unit string) error
 	// IsActive is the answer of `systemctl is-active` ("active",
 	// "inactive", "failed", …) or "unknown" when there is none.
 	IsActive(ctx context.Context, unit string) string
@@ -64,6 +69,18 @@ func (e Exec) Restart(ctx context.Context, unit string) error {
 // DisableNow runs `systemctl disable --now <unit>`.
 func (e Exec) DisableNow(ctx context.Context, unit string) error {
 	_, err := e.run(ctx, "disable", "--now", unit)
+	return err
+}
+
+// Start runs `systemctl start <unit>`.
+func (e Exec) Start(ctx context.Context, unit string) error {
+	_, err := e.run(ctx, "start", unit)
+	return err
+}
+
+// Stop runs `systemctl stop <unit>`.
+func (e Exec) Stop(ctx context.Context, unit string) error {
+	_, err := e.run(ctx, "stop", unit)
 	return err
 }
 

@@ -1,10 +1,15 @@
 // Package packaging holds the files shipped in the .deb; its tests check them
 // against the spec without systemd (systemd-analyze verify runs in Task 20).
+//
+// The telemetry unit's budget is a controller ruling: MemoryMax=64M and
+// CPUQuota=10% are hard caps with GOMEMLIMIT=40MiB, ProtectHome=read-only; the
+// spec budget (< 30 MB RSS, < 1 % CPU) is verified by measurement (Stvor plan Task 21).
 package packaging
 
 import (
 	"bufio"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -143,5 +148,113 @@ func TestUnitSectionsOnly(t *testing.T) {
 		if u[s] == nil {
 			t.Errorf("нет секции [%s]", s)
 		}
+	}
+}
+
+const telemetryUnitFile = "stvor-agent-telemetry.service"
+
+// The telemetry unit (Stvor plan Task 18, ruling R4): unprivileged, no
+// capabilities, read-only system, budget limits, systemd 237 compatible.
+func TestTelemetryUnitRequiredKeys(t *testing.T) {
+	t.Parallel()
+	u := parseUnit(t, telemetryUnitFile)
+	tests := []struct {
+		section, key, want string
+	}{
+		{"Unit", "ConditionPathExists", "/etc/stvor-agent-telemetry/token"},
+		{"Unit", "After", "network-online.target"},
+		{"Unit", "Wants", "network-online.target"},
+		{"Service", "Type", "simple"}, // exec needs systemd 240
+		{"Service", "ExecStart", "/usr/bin/stvor-agent telemetry"},
+		{"Service", "Restart", "always"},
+		{"Service", "User", "stvor-telemetry"},
+		{"Service", "Group", "stvor-telemetry"},
+		{"Service", "EnvironmentFile", "-/etc/cream/stvor-agent/config"},
+		{"Service", "StateDirectory", "stvor-agent-telemetry"},
+		{"Service", "StateDirectoryMode", "0700"},
+		{"Service", "RuntimeDirectory", "stvor-agent-telemetry"},
+		{"Service", "CapabilityBoundingSet", ""},
+		{"Service", "AmbientCapabilities", ""},
+		{"Service", "NoNewPrivileges", "yes"},
+		{"Service", "ProtectSystem", "strict"},
+		{"Service", "ReadWritePaths", "-/var/lib/stvor-agent-telemetry"},
+		{"Service", "ReadOnlyPaths", "-/etc/stvor-agent-telemetry"},
+		{"Service", "ProtectHome", "read-only"},
+		{"Service", "PrivateTmp", "yes"},
+		{"Service", "PrivateDevices", "yes"},
+		{"Service", "ProtectKernelTunables", "yes"},
+		{"Service", "ProtectKernelModules", "yes"},
+		{"Service", "ProtectControlGroups", "yes"},
+		{"Service", "RestrictAddressFamilies", "AF_UNIX AF_INET AF_INET6 AF_NETLINK"},
+		{"Service", "RestrictNamespaces", "yes"},
+		{"Service", "MemoryDenyWriteExecute", "yes"},
+		{"Service", "SystemCallArchitectures", "native"},
+		{"Install", "WantedBy", "multi-user.target"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.section+"/"+tc.key, func(t *testing.T) {
+			t.Parallel()
+			got := u[tc.section][tc.key]
+			if len(got) != 1 || got[0] != tc.want {
+				t.Errorf("[%s] %s = %q, want ровно одно %q", tc.section, tc.key, got, tc.want)
+			}
+		})
+	}
+}
+
+// Controller ruling on the budget (Stvor plan Task 18 review): MemoryMax=64M
+// and CPUQuota=10% are hard caps, GOMEMLIMIT=40MiB makes the Go runtime collect
+// well before the cap; the spec budget (< 30 MB RSS, < 1 % CPU) is a measured
+// target (Stvor plan Task 21), not a unit setting. Exactly these values, nothing else.
+func TestTelemetryUnitBudgetCaps(t *testing.T) {
+	t.Parallel()
+	u := parseUnit(t, telemetryUnitFile)
+	for key, want := range map[string][]string{
+		"MemoryMax":   {"64M"},
+		"CPUQuota":    {"10%"},
+		"Environment": {"GOMEMLIMIT=40MiB"},
+	} {
+		if got := u["Service"][key]; !slices.Equal(got, want) {
+			t.Errorf("[Service] %s = %q, want %q", key, got, want)
+		}
+	}
+	for _, key := range []string{"MemoryHigh", "MemorySwapMax", "CPUWeight", "CPUShares", "MemoryLimit"} {
+		if v, ok := u["Service"][key]; ok {
+			t.Errorf("[Service] %s=%q: бюджет — только MemoryMax/CPUQuota/GOMEMLIMIT", key, v)
+		}
+	}
+}
+
+// ProtectClock= and a syscall filter would break adjtimex(2) of the clock
+// collector; LoadCredential= needs systemd 247; DynamicUser= would lose the
+// buffer owner; MemoryLimit= is deprecated (237 applies MemoryMax= itself).
+func TestTelemetryUnitForbiddenKeys(t *testing.T) {
+	t.Parallel()
+	u := parseUnit(t, telemetryUnitFile)
+	for _, key := range []string{"ProtectClock", "SystemCallFilter", "LoadCredential", "SetCredential",
+		"DynamicUser", "MemoryLimit", "PrivateNetwork", "PrivateUsers", "KillMode"} {
+		for section, keys := range u {
+			if v, ok := keys[key]; ok {
+				t.Errorf("[%s] %s=%q запрещён (Task 18)", section, key, v)
+			}
+		}
+	}
+}
+
+func TestSysusersConf(t *testing.T) {
+	t.Parallel()
+	data, err := os.ReadFile("sysusers.d/stvor-agent.conf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var lines []string
+	for l := range strings.SplitSeq(string(data), "\n") {
+		if l = strings.TrimSpace(l); l != "" && !strings.HasPrefix(l, "#") {
+			lines = append(lines, l)
+		}
+	}
+	// Four columns: the shell column needs systemd 238.
+	if len(lines) != 1 || lines[0] != `u stvor-telemetry - "Stvor agent telemetry" -` {
+		t.Errorf("sysusers lines = %q", lines)
 	}
 }

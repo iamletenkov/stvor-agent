@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -43,6 +44,7 @@ type rootFS struct {
 	reads   map[string]int
 	// denied answers like to a user who is not root: EACCES.
 	denied bool
+	owners map[string][2]int
 }
 
 func (r *rootFS) ReadNoFollow(path string, limit int64) ([]byte, atomicfile.Info, error) {
@@ -65,6 +67,31 @@ func (r *rootFS) Lstat(path string) (atomicfile.Info, error) {
 }
 
 func (r *rootFS) Remove(path string) error { return os.Remove(path) }
+
+// WriteAtomicOwned and Chown record the owner instead of setting it (the
+// tests do not run as root).
+func (r *rootFS) WriteAtomicOwned(path string, data []byte, mode fs.FileMode, uid, gid int) error {
+	if err := r.WriteAtomic(path, data, mode); err != nil {
+		return err
+	}
+	return r.Chown(path, uid, gid)
+}
+
+func (r *rootFS) Chown(path string, uid, gid int) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.owners == nil {
+		r.owners = map[string][2]int{}
+	}
+	r.owners[path] = [2]int{uid, gid}
+	return nil
+}
+
+func (r *rootFS) owner(path string) [2]int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.owners[path]
+}
 
 func (r *rootFS) readsOf(path string) int {
 	r.mu.Lock()
@@ -133,13 +160,17 @@ func newEnv(t *testing.T) *env {
 		FS:        e.fs,
 		TokenPath: filepath.Join(root, "etc/stvor-agent/token"),
 		StatePath: filepath.Join(root, "var/lib/stvor-agent/state.json"),
-		Lock:      daemon.FileLock{Path: filepath.Join(root, "run/stvor-agent.lock")},
-		Systemctl: e.sys,
-		Teleport:  e.tp,
-		Portal:    e.portal,
-		Now:       func() time.Time { return t0 },
-		Getuid:    func() int { return e.uid },
-		Getenv:    func(k string) string { return e.envs[k] },
+
+		TelemetryTokenPath: filepath.Join(root, "etc/stvor-agent-telemetry/token"),
+		TelemetryStateDir:  filepath.Join(root, "var/lib/stvor-agent-telemetry"),
+		TelemetryRunDir:    filepath.Join(root, "run/stvor-agent-telemetry"),
+		Lock:               daemon.FileLock{Path: filepath.Join(root, "run/stvor-agent.lock")},
+		Systemctl:          e.sys,
+		Teleport:           e.tp,
+		Portal:             e.portal,
+		Now:                func() time.Time { return t0 },
+		Getuid:             func() int { return e.uid },
+		Getenv:             func(k string) string { return e.envs[k] },
 		Notify: func(c chan<- os.Signal, _ ...os.Signal) {
 			if e.notify != nil {
 				e.notify(c)

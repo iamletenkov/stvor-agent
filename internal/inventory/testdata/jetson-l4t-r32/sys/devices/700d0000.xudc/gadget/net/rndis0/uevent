@@ -1,0 +1,3 @@
+DEVTYPE=gadget
+INTERFACE=rndis0
+IFINDEX=6

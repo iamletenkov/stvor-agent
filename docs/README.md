@@ -44,5 +44,6 @@
 | [specs/2026-10-18-stvor-agent-go.md](specs/2026-10-18-stvor-agent-go.md) | исходная спека агента на Go и выделения расширения `teleport` |
 | [plans/2026-10-18-stvor-agent-go.md](plans/2026-10-18-stvor-agent-go.md) | план переписывания (закрыт выпуском 4.0.0) |
 | [research/2026-10-18-agent-split-inventory.md](research/2026-10-18-agent-split-inventory.md) | карта раздела bash-агента между `teleport` и stvor-agent |
+| [research/2026-10-22-telemetry-budget-jetson.md](research/2026-10-22-telemetry-budget-jetson.md) | замер бюджета службы телеметрии на Jetson Nano (CPU, RSS), профиль, `verify` юнита на systemd 237 и 245 |
 | [history/2026-10-18-stvor-adr-0030-draft.md](history/2026-10-18-stvor-adr-0030-draft.md) | черновик ADR портала Stvor; принят там как ADR-0031 |
 | [STATUS.md](STATUS.md) | текущее состояние работ (handoff между сессиями) |

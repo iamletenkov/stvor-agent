@@ -10,7 +10,7 @@ import (
 type Fake struct {
 	mu sync.Mutex
 
-	EnableErr, RestartErr, DisableErr error
+	EnableErr, RestartErr, DisableErr, StartErr, StopErr error
 	// Active is what IsActive reports; "" — "inactive".
 	Active string
 
@@ -32,6 +32,16 @@ func (f *Fake) Restart(_ context.Context, unit string) error {
 // DisableNow implements Systemctl.
 func (f *Fake) DisableNow(_ context.Context, unit string) error {
 	return f.record("disable --now "+unit, f.DisableErr)
+}
+
+// Start implements Systemctl.
+func (f *Fake) Start(_ context.Context, unit string) error {
+	return f.record("start "+unit, f.StartErr)
+}
+
+// Stop implements Systemctl.
+func (f *Fake) Stop(_ context.Context, unit string) error {
+	return f.record("stop "+unit, f.StopErr)
 }
 
 // IsActive implements Systemctl.

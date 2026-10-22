@@ -1,0 +1,16 @@
+22 28 0:21 / /sys rw,nosuid,nodev,noexec,relatime shared:7 - sysfs sysfs rw
+23 28 0:22 / /proc rw,nosuid,nodev,noexec,relatime shared:12 - proc proc rw
+24 28 0:5 / /dev rw,nosuid,relatime shared:2 - devtmpfs udev rw,size=3982144k,nr_inodes=995536,mode=755,inode64
+26 28 0:24 / /run rw,nosuid,nodev,noexec,relatime shared:5 - tmpfs tmpfs rw,size=799908k,mode=755,inode64
+28 1 259:2 / / rw,relatime shared:1 - ext4 /dev/nvme0n1p2 rw,errors=remount-ro
+47 28 259:1 / /boot/efi rw,relatime shared:31 - vfat /dev/nvme0n1p1 rw,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=mixed,utf8,errors=remount-ro
+48 28 253:0 / /home rw,relatime shared:33 - ext4 /dev/mapper/vg0-home rw
+49 28 8:1 / /data rw,noatime shared:35 - xfs /dev/sda1 rw,attr2,inode64,logbufs=8,logbsize=32k,noquota
+50 28 8:1 / /srv/data rw,noatime shared:35 - xfs /dev/sda1 rw,attr2,inode64,logbufs=8,logbsize=32k,noquota
+51 28 7:0 / /snap/core22/1612 ro,nodev,relatime shared:37 - squashfs /dev/loop0 ro
+52 28 7:1 / /mnt/image rw,relatime shared:39 - ext4 /dev/loop1 rw
+53 28 0:48 / /mnt/nas rw,relatime shared:41 - nfs4 nas.lan:/export rw,vers=4.2,rsize=1048576,wsize=1048576
+54 28 8:2 / /media/usb\040disk ro,nosuid,nodev,relatime shared:43 - vfat /dev/sdb1 ro,fmask=0022,dmask=0022
+55 28 0:52 / /var/lib/docker/overlay2/3f1c0d/merged rw,relatime shared:45 - overlay overlay rw,lowerdir=/var/lib/docker/overlay2/l/ABC,upperdir=/var/lib/docker/overlay2/3f1c0d/diff,workdir=/var/lib/docker/overlay2/3f1c0d/work
+56 26 0:53 / /run/user/1000 rw,nosuid,nodev,relatime shared:47 - tmpfs tmpfs rw,size=799904k,nr_inodes=199976,mode=700,uid=1000,gid=1000,inode64
+57 28 0:54 / /backup ro,relatime shared:49 - ext4 /dev/sdc1 ro,errors=remount-ro

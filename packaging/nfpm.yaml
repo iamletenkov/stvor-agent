@@ -20,7 +20,9 @@ description: |-
   It polls the robot API of the portal and keeps the managed Teleport labels
   (env, space) equal to the decision of the portal through the teleport
   extension of cream. The service waits for `stvor-agent enable` (a token
-  from the portal) and does not start before it.
+  from the portal) and does not start before it. The unprivileged service
+  stvor-agent-telemetry sends the telemetry of the machine (CPU, memory,
+  disks, network, temperatures, inventory) with a token the agent obtains.
 
 # The agent runs cream on every tick; cream 1.0.0 is the first release with the
 # cream/v1 contract the agent relies on (spec §9.1, §12). systemd is not a
@@ -36,6 +38,16 @@ contents:
       mode: 0755
   - src: packaging/stvor-agent.service
     dst: /usr/lib/systemd/system/stvor-agent.service
+    file_info:
+      mode: 0644
+  - src: packaging/stvor-agent-telemetry.service
+    dst: /usr/lib/systemd/system/stvor-agent-telemetry.service
+    file_info:
+      mode: 0644
+  # The user stvor-telemetry of the telemetry unit; postinst runs systemd-sysusers
+  # (or groupadd/useradd without systemd).
+  - src: packaging/sysusers.d/stvor-agent.conf
+    dst: /usr/lib/sysusers.d/stvor-agent.conf
     file_info:
       mode: 0644
   - src: ${MAN_DIR}/stvor-agent.8.gz

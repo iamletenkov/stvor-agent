@@ -271,3 +271,36 @@ func assertNoTemp(t *testing.T, dir string) {
 		}
 	}
 }
+
+// WriteAtomicOwned sets the owner before the rename; a chown failure leaves
+// the previous file and no temp file.
+func TestWriteAtomicOwned(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "f")
+	if err := (OS{}).WriteAtomicOwned(path, []byte("new\n"), 0o640, os.Getuid(), os.Getgid()); err != nil {
+		t.Fatalf("WriteAtomicOwned: %v", err)
+	}
+	st, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sys := st.Sys().(*syscall.Stat_t)
+	if st.Mode().Perm() != 0o640 || int(sys.Uid) != os.Getuid() || int(sys.Gid) != os.Getgid() {
+		t.Errorf("mode %o owner %d:%d", st.Mode().Perm(), sys.Uid, sys.Gid)
+	}
+
+	boom := errors.New("boom")
+	err = write(path, []byte("other\n"), 0o640, ops{rename: os.Rename, syncDir: syncDir,
+		chown: func(*os.File) error { return boom }})
+	if !errors.Is(err, boom) {
+		t.Fatalf("err = %v, want boom", err)
+	}
+	if got, _ := os.ReadFile(path); string(got) != "new\n" {
+		t.Errorf("previous content lost: %q", got)
+	}
+	assertNoTemp(t, dir)
+	if err := (OS{}).Chown(path, os.Getuid(), os.Getgid()); err != nil {
+		t.Errorf("Chown: %v", err)
+	}
+}

@@ -27,6 +27,8 @@ here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../.." && pwd)
 # shellcheck source=test/e2e/catalog-pin.env
 . "$here/catalog-pin.env"
+# shellcheck source=test/e2e/telemetry-security.env
+. "$here/telemetry-security.env"
 
 ce_dir=${CREAM_EXTENSIONS_DIR:-$root/../cream-extensions}
 commit=${E2E_CE_COMMIT:-$CE_COMMIT}
@@ -90,12 +92,14 @@ docker exec "$name" chown -R root:root /it
 say "сценарий → $logdir/scenario.log"
 rc=0
 docker exec -e "CATALOG_SHA256=$sha" -e "AGENT_VERSION=$agent_version" -e "E2E_XFAIL=${E2E_XFAIL:-}" \
+	-e "TELEMETRY_EXPOSURE_MAX=$TELEMETRY_EXPOSURE_MAX" \
 	"$name" bash /it/inside.sh >"$logdir/scenario.log" 2>&1 || rc=$?
 
 # Journals and files for the log, whatever the outcome.
 docker exec "$name" journalctl --no-pager -o short-iso \
 	>"$logdir/journal.log" 2>&1 || true
 docker exec "$name" cat /etc/teleport.yaml >"$logdir/teleport.yaml" 2>&1 || true
+docker exec "$name" cat /it/telemetry-security.txt >"$logdir/telemetry-security.txt" 2>&1 || true
 
 grep -E '^(ok|FAIL|xfail|XPASS|FATAL|итог)' "$logdir/scenario.log" >&2 || true
 if [ "$rc" -ne 0 ]; then

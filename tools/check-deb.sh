@@ -29,7 +29,9 @@ deb="$dir/stvor-agent_${version}_${arch}.deb"
 dpkg-deb -c "$deb" >"$work/list"
 awk '$1 !~ /^d/ {sub(/^\.\//, "", $6); print $1, $2, "/" $6}' "$work/list" | sort >"$work/files"
 cat >"$work/want" <<-LIST
+	-rw-r--r-- root/root /usr/lib/systemd/system/stvor-agent-telemetry.service
 	-rw-r--r-- root/root /usr/lib/systemd/system/stvor-agent.service
+	-rw-r--r-- root/root /usr/lib/sysusers.d/stvor-agent.conf
 	-rw-r--r-- root/root /usr/share/doc/stvor-agent/NOTICE
 	-rw-r--r-- root/root /usr/share/doc/stvor-agent/copyright
 	-rw-r--r-- root/root /usr/share/man/man8/stvor-agent.8.gz
@@ -67,6 +69,10 @@ done
 dpkg-deb -x "$deb" "$work/root"
 cmp -s "$work/root/usr/lib/systemd/system/stvor-agent.service" packaging/stvor-agent.service ||
 	bad "$deb: юнит отличается от packaging/stvor-agent.service"
+cmp -s "$work/root/usr/lib/systemd/system/stvor-agent-telemetry.service" packaging/stvor-agent-telemetry.service ||
+	bad "$deb: юнит телеметрии отличается от packaging/stvor-agent-telemetry.service"
+cmp -s "$work/root/usr/lib/sysusers.d/stvor-agent.conf" packaging/sysusers.d/stvor-agent.conf ||
+	bad "$deb: sysusers.d отличается от packaging/sysusers.d/stvor-agent.conf"
 cmp -s "$work/root/usr/share/doc/stvor-agent/NOTICE" NOTICE || bad "$deb: NOTICE отличается"
 # The PolyForm paragraph of copyright is LICENSE, indented by one space, «.» for blank lines.
 awk '/^License: PolyForm-Noncommercial-1.0.0$/ && seen++ {on=1; next}

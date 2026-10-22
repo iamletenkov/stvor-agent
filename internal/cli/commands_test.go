@@ -252,7 +252,8 @@ func TestDisable(t *testing.T) {
 			if code != tc.wantCode {
 				t.Errorf("exit code = %d, want %d (stderr %q)", code, tc.wantCode, stderr)
 			}
-			if got := e.sys.Calls(); !slices.Equal(got, []string{"disable --now stvor-agent.service"}) {
+			if got := e.sys.Calls(); !slices.Equal(got, []string{"disable --now stvor-agent.service",
+				"stop stvor-agent-telemetry.service"}) {
 				t.Errorf("systemctl = %q", got)
 			}
 			if exists(e.app.TokenPath) || exists(e.app.StatePath) {

@@ -1,0 +1,6 @@
+18 23 0:17 / /sys rw,nosuid,nodev,noexec,relatime shared:7 - sysfs sysfs rw
+19 23 0:4 / /proc rw,nosuid,nodev,noexec,relatime shared:12 - proc proc rw
+20 23 0:6 / /dev rw,relatime shared:2 - devtmpfs udev rw,size=1890164k,nr_inodes=472541,mode=755
+23 0 179:1 / / rw,relatime shared:1 - ext4 /dev/mmcblk0p1 rw,data=ordered
+24 23 0:19 / /run rw,nosuid,noexec,relatime shared:5 - tmpfs tmpfs rw,size=405904k,mode=755
+45 23 0:42 / /tmp rw,nosuid,nodev shared:28 - tmpfs tmpfs rw

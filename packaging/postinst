@@ -1,25 +1,54 @@
 #!/bin/sh
-# postinst of stvor-agent (spec §9.1). The unit has
-# ConditionPathExists=/etc/stvor-agent/token, so an enabled unit without a
-# token never starts: `stvor-agent enable` writes the token and starts it.
-#   fresh install — enable the unit (in an image build without a running
-#                   systemd this only creates the link, nothing starts);
-#   upgrade       — keep the operator's enable/disable choice;
-#   with a token and a running systemd — try-restart onto the new binary.
+# postinst of stvor-agent (spec §9.1; Stvor plan Task 18 for the telemetry unit).
+# Both units carry ConditionPathExists= on their token, so an enabled unit without
+# a token never starts: `stvor-agent enable` writes the labels token, and the
+# service `run` (root) writes the telemetry token and starts the telemetry unit.
+#   user          — stvor-telemetry from sysusers.d (groupadd/useradd without
+#                   systemd-sysusers, e.g. an image build), directory
+#                   /etc/stvor-agent-telemetry 0750 root:stvor-telemetry;
+#   fresh install — enable both units (in an image build without a running
+#                   systemd this only creates the links, nothing starts);
+#   upgrade       — keep the operator's enable/disable choice; the telemetry unit
+#                   is enabled once, on the upgrade from a version without it (< 4.1.0);
+#   with a running systemd — try-restart both units onto the new binary.
 set -e
 
 unit=stvor-agent.service
+tunit=stvor-agent-telemetry.service
+tuser=stvor-telemetry
+
+create_user() {
+	if command -v systemd-sysusers >/dev/null 2>&1; then
+		systemd-sysusers /usr/lib/sysusers.d/stvor-agent.conf
+		return
+	fi
+	getent group "$tuser" >/dev/null || groupadd --system "$tuser"
+	getent passwd "$tuser" >/dev/null ||
+		useradd --system --gid "$tuser" --no-create-home --home-dir / \
+			--shell /usr/sbin/nologin --comment "Stvor agent telemetry" "$tuser"
+}
 
 case "$1" in
 configure)
+	create_user
+	install -d -m 0750 -o root -g "$tuser" /etc/stvor-agent-telemetry
 	if [ -d /run/systemd/system ]; then
 		systemctl daemon-reload || true
 	fi
-	if [ -z "$2" ] && command -v systemctl >/dev/null 2>&1; then
-		systemctl enable "$unit" || true
+	if command -v systemctl >/dev/null 2>&1; then
+		if [ -z "$2" ]; then
+			systemctl enable "$unit" "$tunit" || true
+		elif dpkg --compare-versions "$2" lt 4.1.0~; then
+			systemctl enable "$tunit" || true
+		fi
 	fi
-	if [ -d /run/systemd/system ] && [ -e /etc/stvor-agent/token ]; then
-		systemctl try-restart "$unit" || true
+	if [ -d /run/systemd/system ]; then
+		if [ -e /etc/stvor-agent/token ]; then
+			systemctl try-restart "$unit" || true
+		fi
+		if [ -e /etc/stvor-agent-telemetry/token ]; then
+			systemctl try-restart "$tunit" || true
+		fi
 	fi
 	;;
 abort-upgrade | abort-remove | abort-deconfigure) ;;

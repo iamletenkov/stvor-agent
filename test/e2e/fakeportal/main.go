@@ -10,9 +10,20 @@
 // of sha256 over "env\nspace". The bearer token is <dir>/token. Every labels
 // request is one JSON line in <dir>/requests.log: status, If-None-Match,
 // X-Applied-Revision — what the scenario checks.
+//
+// Telemetry (Stvor plan Task 18): POST /robot-api/v1/telemetry-token (bearer —
+// the labels token) issues a fresh token, writes it to <dir>/telemetry-token
+// and revokes the previous one; POST /metrics, POST /events and PUT /inventory
+// take the issued token only, a gzip JSON body, and answer 200 {"status":
+// "accepted"}. An inventory without "body" (hash only) is answered 409, as by
+// a portal that does not know the hash, so the agent sends the full body. Every
+// telemetry request is one JSON line in <dir>/telemetry.log. A file
+// <dir>/detail-until (RFC 3339) puts "detail_until" into every 200 — the 5 s
+// mode of the budget run (test/bench/telemetry, Stvor plan Task 21).
 package main
 
 import (
+	"compress/gzip"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -26,6 +37,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"math/big"
 	"net/http"
@@ -62,6 +74,125 @@ type server struct {
 	mu  sync.Mutex
 }
 
+// TelemetryRequest is one line of telemetry.log.
+type TelemetryRequest struct {
+	At            string `json:"at"`
+	Method        string `json:"method"`
+	Path          string `json:"path"`
+	Status        int    `json:"status"`
+	Encoding      string `json:"encoding"`
+	UserAgent     string `json:"user_agent"`
+	Schema        int    `json:"schema,omitempty"`
+	BatchID       string `json:"batch_id,omitempty"`
+	Series        int    `json:"series"`
+	Events        int    `json:"events"`
+	MachineIDHash string `json:"machine_id_hash,omitempty"`
+	InventoryBody bool   `json:"inventory_body"`
+	Error         string `json:"error,omitempty"`
+}
+
+// telemetryBody is what telemetry.log keeps of a request body.
+type telemetryBody struct {
+	Schema        int               `json:"schema"`
+	BatchID       string            `json:"batch_id"`
+	MachineIDHash string            `json:"machine_id_hash"`
+	Series        []json.RawMessage `json:"series"`
+	Events        []json.RawMessage `json:"events"`
+	Body          json.RawMessage   `json:"body"`
+}
+
+func (s *server) appendLine(name string, v any) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	line, _ := json.Marshal(v)
+	f, err := os.OpenFile(filepath.Join(s.dir, name), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		log.Printf("%s: %v", name, err)
+		return
+	}
+	defer func() { _ = f.Close() }()
+	_, _ = f.Write(append(line, '\n'))
+}
+
+// bearer tells whether the request carries the token of the file name.
+func (s *server) bearer(r *http.Request, name string) bool {
+	want, err := os.ReadFile(filepath.Join(s.dir, name))
+	tok := strings.TrimSpace(string(want))
+	return err == nil && tok != "" && r.Header.Get("Authorization") == "Bearer "+tok
+}
+
+func (s *server) handleTelemetryToken(w http.ResponseWriter, r *http.Request) {
+	rec := TelemetryRequest{At: time.Now().UTC().Format(time.RFC3339Nano), Method: r.Method, Path: r.URL.Path,
+		UserAgent: r.Header.Get("User-Agent")}
+	defer func() { s.appendLine("telemetry.log", rec) }()
+	if !s.bearer(r, "token") {
+		rec.Status = http.StatusUnauthorized
+		w.WriteHeader(rec.Status)
+		return
+	}
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		rec.Status = http.StatusInternalServerError
+		w.WriteHeader(rec.Status)
+		return
+	}
+	tok := hex.EncodeToString(raw) // 64 of [0-9a-f]
+	if err := os.WriteFile(filepath.Join(s.dir, "telemetry-token"), []byte(tok+"\n"), 0o600); err != nil {
+		rec.Status = http.StatusInternalServerError
+		w.WriteHeader(rec.Status)
+		return
+	}
+	rec.Status = http.StatusOK
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = fmt.Fprintf(w, `{"token":%q}`, tok)
+}
+
+func (s *server) handleTelemetry(w http.ResponseWriter, r *http.Request) {
+	rec := TelemetryRequest{At: time.Now().UTC().Format(time.RFC3339Nano), Method: r.Method, Path: r.URL.Path,
+		Encoding: r.Header.Get("Content-Encoding"), UserAgent: r.Header.Get("User-Agent")}
+	defer func() { s.appendLine("telemetry.log", rec) }()
+	answer := func(status int, body string) {
+		rec.Status = status
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_, _ = io.WriteString(w, body)
+	}
+	if !s.bearer(r, "telemetry-token") {
+		answer(http.StatusUnauthorized, `{"code":"unauthorized"}`)
+		return
+	}
+	zr, err := gzip.NewReader(io.LimitReader(r.Body, 1<<20))
+	if err != nil {
+		rec.Error = "gzip: " + err.Error()
+		answer(http.StatusBadRequest, `{"code":"bad_encoding"}`)
+		return
+	}
+	raw, err := io.ReadAll(io.LimitReader(zr, 8<<20))
+	var b telemetryBody
+	if err == nil {
+		err = json.Unmarshal(raw, &b)
+	}
+	if err != nil {
+		rec.Error = "body: " + err.Error()
+		answer(http.StatusBadRequest, `{"code":"bad_body"}`)
+		return
+	}
+	rec.Schema, rec.BatchID, rec.MachineIDHash = b.Schema, b.BatchID, b.MachineIDHash
+	rec.Series, rec.Events = len(b.Series), len(b.Events)
+	rec.InventoryBody = len(b.Body) > 0 && string(b.Body) != "null"
+	if r.URL.Path == "/robot-api/v1/inventory" && !rec.InventoryBody {
+		answer(http.StatusConflict, `{"code":"need_body","message":"Инвентарь изменился — пришлите тело целиком","status":"need_body"}`)
+		return
+	}
+	// detail-until (RFC 3339, the Task 21 budget run) turns the 5 s mode on.
+	if until, err := os.ReadFile(filepath.Join(s.dir, "detail-until")); err == nil {
+		answer(http.StatusOK, fmt.Sprintf(`{"status":"accepted","detail_until":%q}`,
+			strings.TrimSpace(string(until))))
+		return
+	}
+	answer(http.StatusOK, `{"status":"accepted"}`)
+}
+
 func (s *server) labels() (Labels, error) {
 	var l Labels
 	data, err := os.ReadFile(filepath.Join(s.dir, "labels.json"))
@@ -72,18 +203,7 @@ func (s *server) labels() (Labels, error) {
 	return l, err
 }
 
-func (s *server) record(r Request) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	line, _ := json.Marshal(r)
-	f, err := os.OpenFile(filepath.Join(s.dir, "requests.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
-	if err != nil {
-		log.Printf("requests.log: %v", err)
-		return
-	}
-	defer func() { _ = f.Close() }()
-	_, _ = f.Write(append(line, '\n'))
-}
+func (s *server) record(r Request) { s.appendLine("requests.log", r) }
 
 func (s *server) handleLabels(w http.ResponseWriter, r *http.Request) {
 	rec := Request{
@@ -173,7 +293,8 @@ func certificates(host, caPath string) (tls.Certificate, error) {
 func main() {
 	addr := flag.String("addr", "127.0.0.1:443", "listen address")
 	host := flag.String("host", "portal.e2e", "DNS name of the certificate")
-	dir := flag.String("dir", "/var/lib/fakeportal", "directory: labels.json, token, ca.pem, requests.log")
+	dir := flag.String("dir", "/var/lib/fakeportal",
+		"directory: labels.json, token, ca.pem, requests.log, telemetry-token, telemetry.log")
 	flag.Parse()
 
 	cert, err := certificates(*host, filepath.Join(*dir, "ca.pem"))
@@ -184,6 +305,10 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /robot-api/v1/labels", s.handleLabels)
 	mux.HandleFunc("GET /webapi/find", handleFind)
+	mux.HandleFunc("POST /robot-api/v1/telemetry-token", s.handleTelemetryToken)
+	mux.HandleFunc("POST /robot-api/v1/metrics", s.handleTelemetry)
+	mux.HandleFunc("POST /robot-api/v1/events", s.handleTelemetry)
+	mux.HandleFunc("PUT /robot-api/v1/inventory", s.handleTelemetry)
 	srv := &http.Server{
 		Addr:              *addr,
 		Handler:           mux,
