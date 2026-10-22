@@ -13,9 +13,10 @@ stvor-agent <команда> [KEY=VALUE …]
 |---|---|
 | `run` | цикл службы — `ExecStart` юнита `stvor-agent.service`; руками не запускают |
 | `enable URL=<адрес>` | читает токен меток со stdin, атомарно пишет `/etc/stvor-agent/token` (0600), включает и перезапускает службу, затем делает один синхронный опрос. Другой адрес портала сбрасывает `state.json` |
-| `disable` | `systemctl disable --now`, удаляет токен и `state.json`. Teleport не трогает: `env`/`space` остаются, метка `stvor_agent` пустеет за ≤ 5 мин |
+| `disable` | `systemctl disable --now`, останавливает `stvor-agent-telemetry`, удаляет токен, `state.json` и токен телеметрии. Teleport не трогает: `env`/`space` остаются, метка `stvor_agent` пустеет за ≤ 5 мин |
 | `sync` | один опрос и сверка сейчас, без паузы после неудачных перезапусков |
 | `apply env=<v> space=<v>` | ручной запасной путь: те же значения в `teleport` без портала и без паузы. `state.json` не меняет — следующий опрос вернёт решение портала |
+| `telemetry` | цикл службы телеметрии — `ExecStart` юнита `stvor-agent-telemetry.service` (пользователь `stvor-telemetry`); от root не запускается |
 | `status [--json]` | состояние: токен (только класс), `state.json`, `managed-status` расширения `teleport`; в сеть не ходит |
 | `version [--short\|--label]` | версия, коммит и сборка; `--short` — `X.Y.Z`; `--label` — `X.Y.Z`, если есть файл токена, иначе пустая строка |
 | `help` | справка |
@@ -37,6 +38,7 @@ read -rs T && printf '%s' "$T" | sudo stvor-agent enable URL=https://<порта
 | Команда | 0 | 1 | 2 |
 |---|---|---|---|
 | `run` | штатная остановка | ошибка запуска | — |
+| `telemetry` | штатная остановка (буфер записан на диск) | запуск от root, буфер не открыт | аргументы |
 | `enable` | токен записан, служба запущена; отказ сети при первом опросе — тоже 0 (служба догонит) | неверный адрес или токен, ошибка записи или `systemctl`, не root | неверные аргументы |
 | `disable` | выключено | что-то не удалось | неверные аргументы |
 | `sync` | метки действуют, узел ещё не зарегистрирован, ошибка сети или HTTP (служба повторит) | ответ не по контракту, перезапуск не подтверждён, токен битый, агент не включён, не root | неверные аргументы |
@@ -64,7 +66,11 @@ read -rs T && printf '%s' "$T" | sudo stvor-agent enable URL=https://<порта
   "in_effect": true,
   "teleport": {"managed": {"env": "prod", "space": "sp-1a2b3c4d"}, "pending": false, "joined": true, "active": true},
   "restart": {"attempts": 0, "paused_until": null},
-  "last_poll": {"at": "2026-10-21T03:00:00Z", "outcome": "not_modified", "http_status": 304}
+  "last_poll": {"at": "2026-10-21T03:00:00Z", "outcome": "not_modified", "http_status": 304},
+  "telemetry": {"service": "active", "token": "ok",
+    "last_send": {"at": "2026-10-21T03:00:05Z", "outcome": "sent", "http_status": 200},
+    "buffer": {"used_bytes": 0, "quota_bytes": 268435456, "oldest_at": null, "segments": 0, "events": 0},
+    "detail_until": null}
 }
 ```
 
@@ -77,6 +83,7 @@ read -rs T && printf '%s' "$T" | sudo stvor-agent enable URL=https://<порта
 | `in_effect` | метки портала применены и подтверждены |
 | `teleport` | из `cream run teleport managed-status`: управляемые метки, ждёт ли перезапуск (`pending`), зарегистрирован ли узел, активен ли агент Teleport; `null` — расширение не ответило |
 | `restart` | неподтверждённые перезапуски подряд и пауза после трёх |
+| `telemetry` | служба телеметрии (4.1.0): `service` — `is-active` юнита `stvor-agent-telemetry`; `token` — `ok`, `absent`, `rejected` (портал ответил 401, служба меток запросит новый), `no_access` (не root), `corrupt`; `last_send` и `buffer` — из `/run/stvor-agent-telemetry/status.json`, `null` — служба ещё не отправляла |
 | `last_poll.outcome` | `ok`, `not_modified`, `unauthorized`, `rate_limited`, `network`, `redirect`, `http_error`, `bad_body` |
 
 Что делать с каждым значением — [диагностика](../guides/diagnostics.md).

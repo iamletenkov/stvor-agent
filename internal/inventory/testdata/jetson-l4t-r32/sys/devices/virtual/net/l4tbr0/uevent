@@ -1,0 +1,3 @@
+DEVTYPE=bridge
+INTERFACE=l4tbr0
+IFINDEX=5

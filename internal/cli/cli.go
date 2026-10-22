@@ -4,11 +4,14 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"slices"
@@ -48,6 +51,7 @@ var commands = []command{
 	{Name: "disable", Summary: "stop the service, remove the token and the state", Root: true},
 	{Name: "sync", Summary: "one reconcile tick now", Root: true},
 	{Name: "apply", Args: "env=<v> space=<v>", Summary: "set the managed labels without the portal", Root: true},
+	{Name: "telemetry", Summary: "telemetry service loop (ExecStart of stvor-agent-telemetry.service), never root"},
 	{Name: "status", Args: "[--json]", Summary: "show the agent state", Flags: []string{"--json"}},
 	{Name: "version", Args: "[--short|--label]", Summary: "print the version", Flags: []string{"--short", "--label"}},
 	{Name: "help", Summary: "print this help"},
@@ -95,6 +99,8 @@ var reLabel = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
 type FS interface {
 	token.FS
 	Remove(path string) error
+	WriteAtomicOwned(path string, data []byte, mode fs.FileMode, uid, gid int) error
+	Chown(path string, uid, gid int) error
 }
 
 // osFS is the real FS.
@@ -110,15 +116,25 @@ type App struct {
 	FS        FS
 	TokenPath string
 	StatePath string
+	// The telemetry token (written by `run` for the telemetry service), the
+	// state and the runtime directories of the telemetry service.
+	TelemetryTokenPath string
+	TelemetryStateDir  string
+	TelemetryRunDir    string
 	// Lock is the agent lock: the service takes it without waiting, the CLI
 	// commands wait up to daemon.CLILockWait.
 	Lock      daemon.FileLock
 	Systemctl systemd.Systemctl
 	Teleport  teleport.Teleport
 	Portal    reconcile.Portal
-	Now       func() time.Time
-	Getuid    func() int
-	Getenv    func(string) string
+	// TelemetryPortal asks for the telemetry token; nil — `run` does not
+	// keep one.
+	TelemetryPortal reconcile.TelemetryPortal
+	// LookupGroup gives the gid of a group (stvor-telemetry).
+	LookupGroup func(name string) (int, error)
+	Now         func() time.Time
+	Getuid      func() int
+	Getenv      func(string) string
 	// Notify and StopNotify are signal.Notify and signal.Stop.
 	Notify     func(c chan<- os.Signal, sig ...os.Signal)
 	StopNotify func(c chan<- os.Signal)
@@ -132,21 +148,27 @@ type App struct {
 func New(ver string, stderr io.Writer) *App {
 	tp := teleport.NewCream("")
 	tp.Stderr = stderr
+	pc := portal.New(portal.Config{Version: ver})
 	return &App{
-		Version:    ver,
-		FS:         osFS{},
-		TokenPath:  token.DefaultPath,
-		StatePath:  state.DefaultPath,
-		Lock:       daemon.FileLock{Path: daemon.DefaultLockPath},
-		Systemctl:  systemd.Exec{Stderr: stderr},
-		Teleport:   tp,
-		Portal:     portal.New(portal.Config{Version: ver}),
-		Now:        time.Now,
-		Getuid:     os.Getuid,
-		Getenv:     os.Getenv,
-		Notify:     signal.Notify,
-		StopNotify: signal.Stop,
-		IsTerminal: isTerminal,
+		Version:            ver,
+		FS:                 osFS{},
+		TokenPath:          token.DefaultPath,
+		StatePath:          state.DefaultPath,
+		TelemetryTokenPath: reconcile.TelemetryTokenPath,
+		TelemetryStateDir:  TelemetryStateDir,
+		TelemetryRunDir:    TelemetryRunDir,
+		TelemetryPortal:    pc,
+		LookupGroup:        lookupGroupID,
+		Lock:               daemon.FileLock{Path: daemon.DefaultLockPath},
+		Systemctl:          systemd.Exec{Stderr: stderr},
+		Teleport:           tp,
+		Portal:             pc,
+		Now:                time.Now,
+		Getuid:             os.Getuid,
+		Getenv:             os.Getenv,
+		Notify:             signal.Notify,
+		StopNotify:         signal.Stop,
+		IsTerminal:         isTerminal,
 	}
 }
 
@@ -173,6 +195,12 @@ func (a *App) Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return writeOut(stdout, usage)
 	case "status":
 		return a.runStatus(rest, stdout, stderr)
+	case "telemetry":
+		if len(rest) != 0 {
+			_, _ = fmt.Fprintf(stderr, "stvor-agent: telemetry не принимает аргументов\n\n%s", usage)
+			return exitUsage
+		}
+		return a.runTelemetry(stderr)
 	}
 	// The rest of the table: commands that need root.
 	if c, ok := findCommand(cmd); !ok || !c.Root {
@@ -306,14 +334,30 @@ func newLogger(w io.Writer, level slog.Level) *slog.Logger {
 	}))
 }
 
-// ticker is the reconcile tick over the App's dependencies.
+// ticker is the reconcile tick over the App's dependencies; with a
+// TelemetryPortal it also keeps the telemetry token (Stvor plan R4).
 func (a *App) ticker(log *slog.Logger) *reconcile.Ticker {
+	var tel reconcile.TelemetryStep
+	if a.TelemetryPortal != nil {
+		tel = &reconcile.TelemetryToken{
+			Portal:       a.TelemetryPortal,
+			FS:           a.FS,
+			LookupGroup:  a.LookupGroup,
+			Start:        func(ctx context.Context) error { return a.Systemctl.Start(ctx, reconcile.TelemetryUnit) },
+			TokenPath:    a.TelemetryTokenPath,
+			RejectedPath: filepath.Join(a.TelemetryStateDir, filepath.Base(reconcile.TelemetryRejectedPath)),
+			SourcePath:   filepath.Join(filepath.Dir(a.StatePath), filepath.Base(reconcile.TelemetrySourcePath)),
+			Now:          a.Now,
+			Log:          log,
+		}
+	}
 	return &reconcile.Ticker{
-		Tokens:   reconcile.TokenFile{FS: a.FS, Path: a.TokenPath},
-		States:   reconcile.StateFile{FS: a.FS, Path: a.StatePath},
-		Portal:   a.Portal,
-		Teleport: a.Teleport,
-		Now:      a.Now,
-		Log:      log,
+		Telemetry: tel,
+		Tokens:    reconcile.TokenFile{FS: a.FS, Path: a.TokenPath},
+		States:    reconcile.StateFile{FS: a.FS, Path: a.StatePath},
+		Portal:    a.Portal,
+		Teleport:  a.Teleport,
+		Now:       a.Now,
+		Log:       log,
 	}
 }

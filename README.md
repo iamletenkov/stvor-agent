@@ -58,6 +58,12 @@ journalctl -u stvor-agent -n 20    # event=poll outcome=ok …
   журнале.
 - **Видно в Teleport.** Динамическая метка узла `stvor_agent=<версия>` показывает, что агент стоит и
   включён.
+- **Телеметрия машины (4.1.0).** Отдельная служба `stvor-agent-telemetry` без root и capabilities
+  (`ProtectSystem=strict`; жёсткие потолки `MemoryMax=64M`, `CPUQuota=10%` при `GOMEMLIMIT=40MiB`, бюджет
+  спеки — < 30 МБ RSS и < 1 % CPU — подтверждается замером) раз в 10/60 с собирает процессор, память,
+  диски, сеть, температуры и инвентарь, копит их офлайн в буфере и шлёт порталу по своему токену; токен
+  получает служба меток (`POST /robot-api/v1/telemetry-token`). Копия контракта v1 зашита в бинарь —
+  `internal/telemetry/contract/v1.json`; портал меняет только интервалы и набор метрик в зашитых диапазонах.
 - **Один статический бинарь** на стандартной библиотеке Go, воспроизводимая сборка `.deb`.
 
 ## Документация
@@ -78,10 +84,10 @@ journalctl -u stvor-agent -n 20    # event=poll outcome=ok …
 
 | | |
 |---|---|
-| ОС | Debian ≥ 12, Ubuntu ≥ 20.04 (systemd ≥ 245) |
+| ОС | Debian ≥ 12, Ubuntu ≥ 20.04 (systemd ≥ 245). Юнит телеметрии живьём проверен на systemd 252 (`make e2e`, Debian 12) и 245 (Jetson Nano, L4T R32.6.1 с Ubuntu 20.04, cgroup v1 — [замер](docs/research/2026-10-22-telemetry-budget-jetson.md)); systemd 237 (штатный L4T R32 с Ubuntu 18.04) — только `systemd-analyze verify` |
 | Архитектуры | `amd64`, `arm64` |
 | Зависимости | cream ≥ 1.0.0; расширение `teleport` ≥ 4.0.0 < 5 (обёртка каталога требует ≥ 4.0.2) |
-| Портал | контракт `GET /robot-api/v1/labels` v1 (тот же, что у `bisquite-teleport-agent` 3.x) |
+| Портал | контракт `GET /robot-api/v1/labels` v1 (тот же, что у `bisquite-teleport-agent` 3.x); телеметрия — контракт v1 (ADR-0034 Stvor), без эндпоинта `telemetry-token` агент повторяет запрос не чаще раза в час |
 
 Переход с `bisquite-teleport-agent` 3.x — [отличия 3.x и 4.x](docs/history/3x-to-4x.md).
 

@@ -91,6 +91,8 @@ func TestExecCommands(t *testing.T) {
 		{"enable", func(ctx context.Context, e systemd.Exec) error { return e.Enable(ctx, unit) }, []string{"enable", unit}},
 		{"restart", func(ctx context.Context, e systemd.Exec) error { return e.Restart(ctx, unit) }, []string{"restart", unit}},
 		{"disable --now", func(ctx context.Context, e systemd.Exec) error { return e.DisableNow(ctx, unit) }, []string{"disable", "--now", unit}},
+		{"start", func(ctx context.Context, e systemd.Exec) error { return e.Start(ctx, unit) }, []string{"start", unit}},
+		{"stop", func(ctx context.Context, e systemd.Exec) error { return e.Stop(ctx, unit) }, []string{"stop", unit}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -162,10 +164,12 @@ func TestFake(t *testing.T) {
 		t.Error("RestartErr not returned")
 	}
 	_ = f.DisableNow(ctx, "u")
+	_ = f.Start(ctx, "t")
+	_ = f.Stop(ctx, "t")
 	if got := f.IsActive(ctx, "u"); got != "active" {
 		t.Errorf("IsActive = %q", got)
 	}
-	want := []string{"enable u", "restart u", "disable --now u", "is-active u"}
+	want := []string{"enable u", "restart u", "disable --now u", "start t", "stop t", "is-active u"}
 	if got := f.Calls(); !slices.Equal(got, want) {
 		t.Errorf("Calls = %q, want %q", got, want)
 	}

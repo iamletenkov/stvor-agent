@@ -12,6 +12,12 @@
 - Документация: README, [первые шаги](getting-started.md), [руководства](guides/), [справочник](reference/cli.md),
   [runbook выпуска](runbooks/01_release.md).
 
+## В работе — телеметрия 4.1.0 (ветка `feature/telemetry`, план Stvor `2026-10-21-robot-telemetry`)
+- Task 21, Jetson: бюджет на Nano (systemd 245, cgroup v1) — обычный режим 0,54 % ядра, режим 5 с 0,99 %,
+  RSS ≤ 16,7 МБ ([замер](research/2026-10-22-telemetry-budget-jetson.md)); gzip-писатель переиспользуется (−30 % CPU).
+  pve-robot-1 и stvorhost (amd64, cgroup v2): 0,03–0,10 % ядра, RSS ≤ 19,5 МБ; образец `pve-robot-debian13`
+  и `tools/collect-fixture.sh`. Не сделано: живой systemd 237, выпуск 4.1.0.
+
 ## Дальше
 1. Приёмка на живом портале — задача 7 среза Stvor «Переход на cream и stvor-agent» (бывшая Task 22).
 2. `stvorhost` на 3.0.1 и роботы на 3.1.x переходят на 4.x перерегистрацией по runbook портала.

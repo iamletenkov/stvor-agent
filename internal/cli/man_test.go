@@ -9,8 +9,8 @@ import (
 	"unicode"
 )
 
-// usageV4 is the help text of stvor-agent 4.0.0: the command table renders it
-// byte for byte.
+// usageV4 is the help text of stvor-agent 4.x (4.1.0 added telemetry): the
+// command table renders it byte for byte.
 const usageV4 = `usage: stvor-agent <command> [KEY=VALUE ...]
 
 commands:
@@ -19,6 +19,7 @@ commands:
   disable                     stop the service, remove the token and the state
   sync                        one reconcile tick now
   apply env=<v> space=<v>     set the managed labels without the portal
+  telemetry                   telemetry service loop (ExecStart of stvor-agent-telemetry.service), never root
   status [--json]             show the agent state
   version [--short|--label]   print the version
   help                        print this help

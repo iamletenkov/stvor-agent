@@ -29,5 +29,12 @@
     "at": "2026-10-18T10:00:00Z",
     "outcome": "not_modified",
     "http_status": 304
+  },
+  "telemetry": {
+    "service": "active",
+    "token": "absent",
+    "last_send": null,
+    "buffer": null,
+    "detail_until": null
   }
 }

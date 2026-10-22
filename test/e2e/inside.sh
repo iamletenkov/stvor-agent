@@ -5,7 +5,9 @@
 #   ce.tar                      — git archive of cream-extensions at the pinned commit
 #   fakeportal, teleport-fake   — the portal (robot API + /webapi/find) and the fake agent
 # Environment: CATALOG_SHA256 (pin of the packed catalog), AGENT_VERSION,
-# E2E_XFAIL (ids of checks failing because of known defects of the snapshot).
+# E2E_XFAIL (ids of checks failing because of known defects of the snapshot),
+# TELEMETRY_EXPOSURE_MAX (test/e2e/telemetry-security.env: the highest allowed
+# «Overall exposure level» of systemd-analyze security for the telemetry unit).
 #
 # One line per check: "ok", "FAIL", "xfail" (a known defect — not a failure),
 # "XPASS" (a known defect gone — a failure until its id leaves E2E_XFAIL).
@@ -16,6 +18,8 @@ PASS=0 FAILS=0 XFAILS=0
 TELEPORT_TARBALL=/it/teleport-v18.10.0-linux-amd64-bin.tar.gz
 PORTAL=/var/lib/fakeportal
 REQ=$PORTAL/requests.log
+TREQ=$PORTAL/telemetry.log
+TUNIT=stvor-agent-telemetry.service
 TP=/var/lib/e2e-teleport
 URL=https://portal.e2e/robot-api/v1/labels
 # Test-only secrets of a throwaway container: the join token and the labels token.
@@ -92,7 +96,7 @@ cream version
 cream system init >/dev/null || fatal "cream system init"
 echo "127.0.0.1 portal.e2e" >>/etc/hosts
 
-log "портал: /webapi/find и /robot-api/v1/labels"
+log "портал: /webapi/find, /robot-api/v1/labels и телеметрия"
 install -d -m 0700 "$PORTAL"
 printf '%s\n' "$LABEL_TOKEN" >"$PORTAL/token"
 printf '{"env":"e2e","space":"sp-a"}\n' >"$PORTAL/labels.json"
@@ -193,6 +197,58 @@ check label-value-enabled "stvor-agent version --label — $AGENT_VERSION" \
 rev_a=$(rev_of e2e sp-a)
 check applied-a "X-Applied-Revision $rev_a на следующем тике" poll_ticks 60 reported "$rev_a"
 
+# --- 6a. Telemetry (Stvor plan Task 18): run fetches the token, the service --
+# starts as stvor-telemetry and a batch reaches the portal.
+log "телеметрия: токен от run → служба stvor-telemetry → пачка у портала"
+# treq <jq filter> — a telemetry request matching the filter was logged.
+treq() { jq -e -s "any(.[]; $1)" "$TREQ" >/dev/null 2>&1; }
+check tel-token-request "run запросил токен телеметрии по токену меток (POST /telemetry-token → 200)" \
+	wait_for 30 treq '.path == "/robot-api/v1/telemetry-token" and .method == "POST" and .status == 200'
+token_mode() { [[ "$(stat -c '%a %U:%G' /etc/stvor-agent-telemetry/token 2>/dev/null)" == "640 root:stvor-telemetry" ]]; }
+check tel-token-file "файл токена телеметрии 0640 root:stvor-telemetry" wait_for 10 token_mode
+check tel-token-dir "каталог /etc/stvor-agent-telemetry 0750 root:stvor-telemetry" \
+	eq "$(stat -c '%a %U:%G' /etc/stvor-agent-telemetry)" "750 root:stvor-telemetry"
+check tel-token-content "в файле — адрес robot-api и выданный порталом токен" \
+	bash -c "grep -qx 'url=https://portal.e2e/robot-api/v1' /etc/stvor-agent-telemetry/token &&
+		grep -qx \"token=\$(cat $PORTAL/telemetry-token)\" /etc/stvor-agent-telemetry/token"
+check tel-token-not-labels "токен телеметрии не равен токену меток" \
+	bash -c "! grep -qF -- '$LABEL_TOKEN' /etc/stvor-agent-telemetry/token"
+check tel-active "run запустил $TUNIT" wait_for 30 systemctl is-active --quiet "$TUNIT"
+tpid=$(systemctl show -p MainPID --value "$TUNIT")
+check tel-user "служба телеметрии работает от stvor-telemetry, не root" \
+	eq "$(ps -o user= -p "$tpid" | tr -d ' ')" stvor-telemetry
+check tel-no-caps "у процесса телеметрии нет capabilities (CapEff 0)" \
+	bash -c "grep -qx 'CapEff:[[:space:]]*0000000000000000' /proc/$tpid/status"
+check tel-cgroup-limits "MemoryMax=64M и CPUQuota=10% применены" \
+	bash -c "[ \"\$(systemctl show -p MemoryMax --value $TUNIT)\" = 67108864 ] &&
+		[ \"\$(systemctl show -p CPUQuotaPerSecUSec --value $TUNIT)\" = 100ms ]"
+check tel-metrics "пачка метрик дошла до портала: POST /metrics, gzip, 200, схема 1, ряды есть" \
+	wait_for 60 treq '.path == "/robot-api/v1/metrics" and .encoding == "gzip" and .status == 200 and .schema == 1 and .series > 0 and (.batch_id | length) > 0'
+check tel-inventory "инвентарь: хэш → 409 → полное тело → 200" \
+	wait_for 30 bash -c "jq -e -s '[.[] | select(.path == \"/robot-api/v1/inventory\")] | (any(.status == 409 and (.inventory_body | not)) and any(.status == 200 and .inventory_body))' $TREQ >/dev/null"
+if [ -s /etc/machine-id ]; then
+	mid=$(tr -d '[:space:]' </etc/machine-id | sha256sum | cut -d' ' -f1)
+	check tel-machine-id "machine_id_hash пачки — sha256 /etc/machine-id" \
+		treq ".path == \"/robot-api/v1/metrics\" and .machine_id_hash == \"$mid\""
+fi
+check tel-no-401 "портал ни разу не отверг токен телеметрии" bash -c "! jq -e -s 'any(.[]; .status == 401)' $TREQ >/dev/null"
+check tel-status "status --json: служба active, токен ok, last_send есть" \
+	wait_for 20 bash -c "stvor-agent status --json | jq -e '.telemetry.service == \"active\" and .telemetry.token == \"ok\" and .telemetry.last_send != null' >/dev/null"
+check tel-token-not-in-journal "токены не попали в журнал" \
+	bash -c "! journalctl --no-pager -o cat | grep -qF -e \"\$(cat $PORTAL/telemetry-token)\" -e '$LABEL_TOKEN'"
+check tel-stop "SIGTERM: служба останавливается штатно, буфер на диске" \
+	bash -c "systemctl stop $TUNIT && [ \"\$(systemctl show -p Result --value $TUNIT)\" = success ] && test -d /var/lib/stvor-agent-telemetry/buffer"
+systemctl start "$TUNIT"
+
+log "systemd-analyze verify / security $TUNIT"
+systemd-analyze verify "/usr/lib/systemd/system/$TUNIT"
+check tel-unit-verify "systemd-analyze verify $TUNIT — код 0" eq "$?" 0
+systemd-analyze security --no-pager "$TUNIT" | tee /it/telemetry-security.txt
+exposure=$(sed -n 's/.*Overall exposure level for [^:]*: \([0-9.]*\).*/\1/p' /it/telemetry-security.txt)
+log "exposure $TUNIT: ${exposure:-?} (порог ${TELEMETRY_EXPOSURE_MAX:-?})"
+check tel-unit-exposure "exposure $TUNIT ${exposure:-?} ≤ ${TELEMETRY_EXPOSURE_MAX:-?}" \
+	awk -v got="${exposure:-}" -v max="${TELEMETRY_EXPOSURE_MAX:-}" 'BEGIN { exit !(got != "" && max != "" && got + 0 <= max + 0) }'
+
 # --- 7. The portal moves the robot: restart confirmed, X-Applied-Revision ----
 log "портал меняет space: sp-a → sp-b"
 inv2=$(inv teleport.service)
@@ -224,6 +280,8 @@ log "cream run teleport status"
 cream run teleport status
 log "запросы к порталу"
 cat "$REQ"
+log "запросы телеметрии"
+cat "$TREQ"
 
 summary
 [ "$FAILS" -eq 0 ]

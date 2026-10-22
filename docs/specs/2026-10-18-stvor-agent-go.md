@@ -90,6 +90,7 @@
 | `bisquite-teleport-token.{path,service}` | **T** `teleport-token.{path,service}` |
 | `bisquite-teleport-join.{service,timer}` | **T** `teleport-join.{service,timer}` |
 | `bisquite-teleport-labels.{service,timer}` | **S** `stvor-agent.service` (долгоживущая, `Restart=always`) |
+| — | **S** `stvor-agent-telemetry.service` (с 4.1.0: телеметрия машины, не root, §7.1) |
 
 ### 4.3 Файлы
 | Было | Стало |
@@ -105,6 +106,7 @@
 | ручка `TELEPORT_LABELS_URL` | ✗ (адрес живёт рядом с токеном) |
 | `labels-expected`, `labels-applied`, `labels-restart-attempts`, `.labels.lock`, `.pull.*` | **S** `/var/lib/stvor-agent/state.json` + `/run/stvor-agent.lock` |
 | `2.x-units/`, ссылка `/usr/local/sbin/bisquite-teleport`, перенос 2.x в `pkg-setup` | ✗ |
+| — | **S** с 4.1.0 (§7.1): `/etc/stvor-agent-telemetry/token` (0640 `root:stvor-telemetry`, пишет `run`), `/var/lib/stvor-agent-telemetry/` (буфер, `boot-id`, маркер `token-rejected`; владелец `stvor-telemetry`), `/run/stvor-agent-telemetry/status.json`, `/var/lib/stvor-agent/telemetry-token.src` |
 
 ### 4.4 Статические метки узла
 | Было | Стало |
@@ -305,6 +307,9 @@ S проверяет ответ строго (`schema == 1`, ключи и зн�
   `teleport.service`. Поверхность недоверенного ввода — ответ ≤ 4096 байт, разбираемый строгим токенным парсером на
   Go (память безопасна); значения, уходящие в T, прошли регулярные выражения и передаются argv без shell.
   Непривилегированные варианты — в §13.
+- **Служба телеметрии** (с 4.1.0) — отдельный юнит без root и capabilities, `ProtectSystem=strict`, запись только в
+  свои `StateDirectory=`/`RuntimeDirectory=`; ошибка разбора `/proc`/`/sys` не даёт root. Токен телеметрии пишет
+  только телеметрию своего робота; root-служба передаёт его файлом 0640 `root:stvor-telemetry` (§7.1).
 - **Hardening юнита** (наследуется дочерними `cream`/T, поэтому только то, что им не мешает):
   `NoNewPrivileges=yes`, `PrivateTmp=yes`, `ProtectHome=yes`, `ProtectKernelTunables=yes`, `ProtectKernelModules=yes`,
   `ProtectKernelLogs=yes`, `ProtectControlGroups=yes`, `ProtectClock=yes`, `ProtectHostname=yes`,
@@ -343,8 +348,90 @@ S проверяет ответ строго (`schema == 1`, ключи и зн�
   `token`: `ok | absent | bad_mode | bad_owner | no_access | corrupt` (`no_access` — запуск не от root: файл закрыт,
   `enabled` — `null`, код 1, причина «нужен root для полного статуса» в stderr); `outcome`: `ok | not_modified | unauthorized | rate_limited |
   network | redirect | http_error | bad_body | skipped_locked`. Без `--json` — те же поля таблицей по-русски.
-- Портал видит агента через существующие поля (`pulled_at`, `applied_revision`, метка `stvor_agent` в инвентаре) —
-  новых каналов телеметрии нет.
+- Портал видит службу меток через существующие поля (`pulled_at`, `applied_revision`, метка `stvor_agent` в инвентаре
+  Teleport). Портов агент не открывает (§6) — телеметрия машины уходит на портал сама, отдельным каналом (§7.1).
+
+### 7.1 Канал телеметрии (с 4.1.0; ADR-0034 портала Stvor)
+Решение и протокол — ADR-0034 Stvor и спека Stvor «Телеметрия и инвентарь роботов» (2026-10-21) §4–§6; здесь — как
+это устроено в агенте. Источник правды о протоколе — контракт портала `robot_telemetry/contract/v1.json`; его байтовая
+копия вкомпилирована в агент (`internal/telemetry/contract/v1.json`, пин `tools/telemetry-contract.sha256`, сверка —
+`make lint`).
+
+- **Две службы, один бинарь.** `stvor-agent.service` (root, цикл `/labels`, §5) не меняется, кроме одного шага тика:
+  если файла токена телеметрии нет или служба телеметрии оставила маркер `token-rejected`, `run` просит новый токен
+  `POST /robot-api/v1/telemetry-token` (Bearer — токен меток), пишет `/etc/stvor-agent-telemetry/token`
+  (`url=…/robot-api/v1`, `token=…`; файл 0640, каталог 0750, оба `root:stvor-telemetry`, атомарно) и стартует
+  `stvor-agent-telemetry.service`. Портал без эндпоинта (404) или со сбоем — повтор с паузой 1 мин → не чаще раза в
+  час; цикл меток от этого не страдает. Новый токен меток (`enable` после перевыпуска) — новый токен телеметрии (сверка
+  по sha256 токена меток в `/var/lib/stvor-agent/telemetry-token.src`). `LoadCredential=` не используется:
+  он есть только с systemd 247, а Jetson L4T R32 штатно — Ubuntu 18.04 с systemd 237.
+- **Служба телеметрии** — `stvor-agent telemetry` под `stvor-telemetry` (пользователь из `sysusers.d`, без входа и
+  домашнего каталога; от root подкоманда отказывается). Без capabilities, `ProtectSystem=strict`, пишет только
+  `StateDirectory=` (буфер, `boot-id`, маркер `token-rejected`) и `RuntimeDirectory=` (`status.json` на tmpfs),
+  `MemoryMax=64M`, `CPUQuota=10%`, `GOMEMLIMIT=40MiB` — жёсткие потолки, а не бюджет (бюджет — ниже). Юнит и его
+  hardening закреплены `packaging/unit_test.go`; exposure `systemd-analyze security` — не выше
+  `test/e2e/telemetry-security.env` (`make e2e`, systemd 252).
+- **Сбор** (`internal/collect`, только stdlib) — `/proc` и `/sys` без root: группа `fast` раз в 10 с (CPU по режимам,
+  load, частота; память и PSI; сеть с CAN и Wi-Fi через rtnetlink/nl80211; I/O дисков), группа `slow` раз в 60 с
+  (uptime, `boot_id`, синхронизация часов, упавшие юниты `systemctl`, «нужна перезагрузка», свойства линков, ФС и
+  inodes, температуры). Нет источника на машине (PSI на ядре 4.9, cpufreq в ВМ) — нет точки и нет `capabilities`,
+  а не ноль. Имена метрик — OpenTelemetry semconv из белого списка контракта; счётчики сырые накопительные.
+- **Инвентарь** (`internal/inventory`) — плата, ВМ/железо, ОС и L4T, CPU, память, диски, сеть, USB, PCI, GPU,
+  камеры; проверка раз в `inventory_check_s` (60 с), `PUT /inventory` — только при смене хэша, сначала хэш, тело — по 409. Хэш —
+  sha256 каноничного JSON тела без ключей `collected_at` и `nics[].ipv4`, `nics[].ipv6` (правило контракта v1;
+  каноничный JSON — байт-в-байт `json.dumps(sort_keys=True, separators=(",", ":"), ensure_ascii=False)` портала,
+  включая U+2028/U+2029 без экранирования):
+  флап аренды DHCP или Wi-Fi не порождает новую версию инвентаря; имя, тип, драйвер и MAC интерфейса в хэше
+  остаются, адреса едут в теле (рулинг контроллера плана Stvor, Task 21). Серийники — только sha256; SSID/BSSID,
+  командные строки, окружение процессов, имена пользователей и содержимое файлов агент не собирает никогда.
+- **Буфер** (`internal/buffer`) — кольцо в RAM (720 тиков: час даже в режиме 5 с); пока портал отвечает, пачки
+  уходят прямо из кольца и диск не пишется. Без связи — gzip-сегменты раз в 10 мин (tmp → fsync → rename) в
+  `/var/lib/stvor-agent-telemetry/buffer`, квота `buffer_quota_mib` (256 МиБ по умолчанию): данные старше суток
+  сворачиваются в 1 мин, затем в 5 мин (уровни → min/avg/max, счётчики → последнее значение), затем удаляются
+  старейшие; последние 24 ч всегда сырые; события не сворачиваются; точки старше 30 дней не отправляются. Пачка
+  несёт `stream` (ULID буфера) и строго растущий `seq` до подтверждения — повтор после сбоя или рестарта портал
+  отбрасывает как дубль.
+- **Отправка** (`internal/telemetry`) — один запрос за раз, gzip JSON, Bearer токен телеметрии: свежие точки →
+  события (`POST /events`, идемпотентно по `event_id`) → хвост буфера от старого к новому. В покое — пачка раз в
+  60 ± 6 с; 429/503 — `Retry-After`, иначе экспоненциальная пауза 1 с → 10 мин с полным разбросом; 413 — пачка
+  делится пополам; 400 с кодом контракта (`statuses."400"`: `telemetry.malformed | invalid | schema_unsupported |
+  inventory_hash_mismatch` — пачка не декодируется или нарушает контракт) — пачка удаляется из буфера со строкой
+  `telemetry.dropped` в журнале и не повторяется; отвергнутый инвентарь с тем же хэшем не шлётся 1 ч, затем — снова
+  (смена железа — сразу). 400 без кода контракта (прокси, HAProxy/Traefik) — данные остаются в буфере, пауза с
+  backoff, как на 422. Предохранитель: 3-й подряд ответ 400 любого вида (на пачки или инвентарь, без 2xx между
+  ними) — сбой портала, а не плохие пачки:
+  данные остаются в буфере, пауза с экспоненциальным backoff, строка `telemetry.portal_rejecting` на каждую паузу;
+  первый 2xx сбрасывает счёт. 422 — данные остаются в буфере, пауза; 401 — маркер `token-rejected` для `run` и повтор со свежим файлом токена; 409
+  `clone_rejected` — пауза на час и событие
+  `portal.clone_rejected`; 409 `tail_rejected` (хвост прежней загрузки портал не примет никогда) — пачка удаляется из
+  буфера со строкой `telemetry.tail_rejected`, не повторяется и в предохранитель не считается; на инвентарь полное
+  тело уходит только по 409 `need_body`. Исход ответа агент берёт только из поля `code` (`reply_codes`
+  контракта: `duplicate`, `need_body`, `clone_rejected`, `tail_rejected`); `error` и `message` — для людей. `PUT
+  /inventory` и `POST /events` несут те же поля отправителя, что пачка метрик, — `machine_id_hash`, `boot_id`
+  текущей загрузки и `sent_mono_ms` этой попытки, все три вместе или ни одного. Между любыми двумя запросами к порталу (пачки, события, инвентарь) — не
+  меньше 3 с (≤ 20 в минуту — лимит Traefik на робота); `next_after_ms` портала выдерживается сверх этого.
+- **Конфигурация от портала** — только в ответе 200 на пачку: белый список метрик, интервалы, `per_core`, квота,
+  автономность, `detail_until`, `next_after_ms`, хэш. Агент применяет лишь значения из вкомпилированных диапазонов
+  контракта, остальное игнорирует и пишет в журнал; путь, команду или источник сбора портал задать не может.
+- **Режим 5 с** — пока `now < detail_until` (не дальше 15 мин от ответа): быстрая группа раз в 5 с, пачки раз в
+  10 с; по истечении — обычное расписание без команды портала.
+- **Журнал** — события `telemetry.*`, `inventory`, `start`/`stop` в стиле §7 под `SyslogIdentifier=stvor-agent-telemetry`;
+  ни токена, ни тел запросов.
+- **`status [--json]`** — блок `telemetry` (схема 1, аддитивно): `service` (`is-active` юнита), `token`
+  (`ok | absent | no_access | corrupt | rejected`, сам токен — никогда), `last_send` (`at`, `outcome`,
+  `http_status`), `buffer` (`used_bytes`, `quota_bytes`, `oldest_at`, `segments`, `events`), `detail_until`. Источник
+  — `/run/stvor-agent-telemetry/status.json`, который служба переписывает после каждого запроса; в сеть `status` не
+  ходит.
+- **Бюджет** (спека Stvor §4): < 1 % CPU одного ядра и < 30 МБ RSS на Jetson Nano. Замер 2026-10-22 на Nano
+  (L4T R32.6.1, ядро 4.9, systemd 245) —
+  [research/2026-10-22-telemetry-budget-jetson.md](../research/2026-10-22-telemetry-budget-jetson.md): обычный
+  режим и RSS — в бюджете, режим 5 с — около 1 % ядра (временный, ≤ 15 мин). На amd64 (pve-robot-1, Debian 13,
+  systemd 257, cgroup v2; stvorhost, Debian 12, systemd 252) — 0,03–0,10 % ядра и RSS до 19,5 МБ.
+- **Совместимость systemd.** Юнит рассчитан на systemd ≥ 237: `Type=simple` (не `exec`, ≥ 240), пользователь из
+  `sysusers.d` в четыре колонки (shell — ≥ 238), токен файлом (не `LoadCredential=`, ≥ 247); `ProtectKernelLogs=`
+  (≥ 244) и `ProtectHostname=` (≥ 242) на 237 игнорируются с «Unknown lvalue» — `systemd-analyze verify` на 237
+  выдаёт ровно эти две строки (проверено в контейнере ubuntu:18.04). Живьём юнит проверен на 252 (`make e2e`) и на
+  245 с иерархией cgroup v1 (Nano); на настоящей машине с 237 — не проверен.
 
 ## 8. CLI агента
 | Команда | Что делает | Коды |

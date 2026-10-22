@@ -1,0 +1,13 @@
+25 30 0:23 / /sys rw,nosuid,nodev,noexec,relatime shared:7 - sysfs sysfs rw
+26 30 0:24 / /proc rw,nosuid,nodev,noexec,relatime shared:13 - proc proc rw
+27 30 0:5 / /dev rw,nosuid,relatime shared:2 - devtmpfs udev rw,size=7826032k,nr_inodes=1956508,mode=755,inode64
+29 30 0:26 / /run rw,nosuid,nodev,noexec,relatime shared:5 - tmpfs tmpfs rw,size=1572956k,mode=755,inode64
+30 1 259:2 / / rw,relatime shared:1 - ext4 /dev/nvme0n1p2 rw
+63 30 259:1 / /boot/efi rw,relatime shared:57 - vfat /dev/nvme0n1p1 rw,fmask=0077,dmask=0077,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro
+64 30 0:45 /@home /home rw,relatime shared:59 - btrfs /dev/nvme0n1p3 rw,ssd,discard=async,space_cache=v2,subvolid=257,subvol=/@home
+65 30 0:46 /@vm /var/lib/libvirt rw,relatime shared:61 - btrfs /dev/nvme0n1p3 rw,ssd,discard=async,space_cache=v2,subvolid=258,subvol=/@vm
+66 30 7:0 / /snap/firefox/4848 ro,nodev,relatime shared:63 - squashfs /dev/loop0 ro,errors=continue,threads=single
+67 30 7:1 / /snap/snapd/21759 ro,nodev,relatime shared:65 - squashfs /dev/loop1 ro,errors=continue,threads=single
+68 29 0:50 / /run/user/1000/doc rw,nosuid,nodev,relatime shared:67 - fuse.portal portal rw,user_id=1000,group_id=1000
+69 30 8:17 / /media/user/CAMERA rw,nosuid,nodev,relatime shared:69 - exfat /dev/sdb1 rw,fmask=0022,dmask=0022,iocharset=utf8,errors=remount-ro
+70 30 0:55 / /mnt/share rw,relatime shared:71 - cifs //nas/share rw,vers=3.1.1

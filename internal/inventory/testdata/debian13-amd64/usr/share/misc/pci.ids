@@ -1,0 +1,107 @@
+# Subset of pci.ids (https://pci-ids.ucw.cz/, BSD-3-Clause or GPL-2.0+) for the test fixture.
+10de  NVIDIA Corporation
+	1aef  GA102 High Definition Audio Controller
+	2206  GA102 [GeForce RTX 3080]
+10ec  Realtek Semiconductor Co., Ltd.
+	8125  RTL8125 2.5GbE Controller
+1f40  Netac Technology Co.,Ltd
+8086  Intel Corporation
+	2f00  Xeon E7 v3/Xeon E5 v3/Core i7 DMI2
+	2f02  Xeon E7 v3/Xeon E5 v3/Core i7 PCI Express Root Port 1
+	2f03  Xeon E7 v3/Xeon E5 v3/Core i7 PCI Express Root Port 1
+	2f08  Xeon E7 v3/Xeon E5 v3/Core i7 PCI Express Root Port 3
+	2f1d  Xeon E7 v3/Xeon E5 v3/Core i7 PCIe Ring Interface
+	2f1e  Xeon E7 v3/Xeon E5 v3/Core i7 Scratchpad & Semaphore Registers
+	2f1f  Xeon E7 v3/Xeon E5 v3/Core i7 Scratchpad & Semaphore Registers
+	2f28  Xeon E7 v3/Xeon E5 v3/Core i7 Address Map, VTd_Misc, System Management
+	2f29  Xeon E7 v3/Xeon E5 v3/Core i7 Hot Plug
+	2f2a  Xeon E7 v3/Xeon E5 v3/Core i7 RAS, Control Status and Global Errors
+	2f2c  Xeon E7 v3/Xeon E5 v3/Core i7 I/O APIC
+	2f30  Xeon E7 v3/Xeon E5 v3/Core i7 Home Agent 0
+	2f32  Xeon E7 v3/Xeon E5 v3/Core i7 QPI Link 0
+	2f33  Xeon E7 v3/Xeon E5 v3/Core i7 QPI Link 1
+	2f34  Xeon E7 v3/Xeon E5 v3/Core i7 PCIe Ring Interface
+	2f36  Xeon E7 v3/Xeon E5 v3/Core i7 R3 QPI Link 0 & 1 Monitoring
+	2f37  Xeon E7 v3/Xeon E5 v3/Core i7 R3 QPI Link 0 & 1 Monitoring
+	2f38  Xeon E7 v3/Xeon E5 v3/Core i7 Home Agent 1
+	2f60  Xeon E7 v3/Xeon E5 v3/Core i7 Home Agent 1
+	2f68  Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Target Address, Thermal & RAS Registers
+	2f6a  Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Channel Target Address Decoder
+	2f6b  Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Channel Target Address Decoder
+	2f6e  Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO Channel 2/3 Broadcast
+	2f6f  Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO Global Broadcast
+	2f71  Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Target Address, Thermal & RAS Registers
+	2f79  Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Target Address, Thermal & RAS Registers
+	2f7d  Xeon E7 v3/Xeon E5 v3/Core i7 Scratchpad & Semaphore Registers
+	2f80  Xeon E7 v3/Xeon E5 v3/Core i7 QPI Link 0
+	2f81  Xeon E7 v3/Xeon E5 v3/Core i7 R3 QPI Link 0 & 1 Monitoring
+	2f83  Xeon E7 v3/Xeon E5 v3/Core i7 QPI Link 0
+	2f88  Xeon E7 v3/Xeon E5 v3/Core i7 VCU
+	2f8a  Xeon E7 v3/Xeon E5 v3/Core i7 VCU
+	2f90  Xeon E7 v3/Xeon E5 v3/Core i7 QPI Link 1
+	2f93  Xeon E7 v3/Xeon E5 v3/Core i7 QPI Link 1
+	2f98  Xeon E7 v3/Xeon E5 v3/Core i7 Power Control Unit
+	2f99  Xeon E7 v3/Xeon E5 v3/Core i7 Power Control Unit
+	2f9a  Xeon E7 v3/Xeon E5 v3/Core i7 Power Control Unit
+	2f9c  Xeon E7 v3/Xeon E5 v3/Core i7 Power Control Unit
+	2fa0  Xeon E7 v3/Xeon E5 v3/Core i7 Home Agent 0
+	2fa8  Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Target Address, Thermal & RAS Registers
+	2faa  Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Channel Target Address Decoder
+	2fab  Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Channel Target Address Decoder
+	2fae  Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO Channel 0/1 Broadcast
+	2faf  Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO Global Broadcast
+	2fb0  Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Channel 0 Thermal Control
+	2fb1  Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Channel 1 Thermal Control
+	2fb2  Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Channel 0 ERROR Registers
+	2fb3  Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Channel 1 ERROR Registers
+	2fb8  Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 2 & 3
+	2fb9  Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 2 & 3
+	2fba  Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 2 & 3
+	2fbb  Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 2 & 3
+	2fbc  Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 0 & 1
+	2fbd  Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 0 & 1
+	2fbe  Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 0 & 1
+	2fbf  Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 0 & 1
+	2fc0  Xeon E7 v3/Xeon E5 v3/Core i7 Power Control Unit
+	2fd0  Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Channel 0 Thermal Control
+	2fd1  Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Channel 1 Thermal Control
+	2fd2  Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Channel 0 ERROR Registers
+	2fd3  Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Channel 1 ERROR Registers
+	2fe0  Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers
+	2fe1  Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers
+	2fe2  Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers
+	2fe3  Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers
+	2fe4  Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers
+	2fe5  Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers
+	2fe6  Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers
+	2fe7  Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers
+	2fe8  Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers
+	2fe9  Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers
+	2fea  Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers
+	2feb  Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers
+	2fec  Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers
+	2fed  Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers
+	2fee  Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers
+	2fef  Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers
+	2ff0  Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers
+	2ff1  Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers
+	2ff8  Xeon E7 v3/Xeon E5 v3/Core i7 Buffered Ring Agent
+	2ff9  Xeon E7 v3/Xeon E5 v3/Core i7 Buffered Ring Agent
+	2ffa  Xeon E7 v3/Xeon E5 v3/Core i7 Buffered Ring Agent
+	2ffb  Xeon E7 v3/Xeon E5 v3/Core i7 Buffered Ring Agent
+	2ffc  Xeon E7 v3/Xeon E5 v3/Core i7 System Address Decoder & Broadcast Registers
+	2ffd  Xeon E7 v3/Xeon E5 v3/Core i7 System Address Decoder & Broadcast Registers
+	2ffe  Xeon E7 v3/Xeon E5 v3/Core i7 System Address Decoder & Broadcast Registers
+	8d10  C610/X99 series chipset PCI Express Root Port #1
+	8d14  C610/X99 series chipset PCI Express Root Port #3
+	8d16  C610/X99 series chipset PCI Express Root Port #4
+	8d18  C610/X99 series chipset PCI Express Root Port #5
+	8d20  C610/X99 series chipset HD Audio Controller
+	8d22  C610/X99 series chipset SMBus Controller
+	8d26  C610/X99 series chipset USB Enhanced Host Controller #1
+	8d2d  C610/X99 series chipset USB Enhanced Host Controller #2
+	8d31  C610/X99 series chipset USB xHCI Host Controller
+	8d3a  C610/X99 series chipset MEI Controller #1
+	8d3b  C610/X99 series chipset MEI Controller #2
+	8d44  C610/X99 series chipset LPC Controller
+	8d7c  C610/X99 series chipset SPSR

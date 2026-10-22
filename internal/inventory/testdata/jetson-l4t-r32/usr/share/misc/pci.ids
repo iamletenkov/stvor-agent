@@ -1,0 +1,6 @@
+# Subset of pci.ids (https://pci-ids.ucw.cz/, BSD-3-Clause or GPL-2.0+) for the test fixture.
+10de  NVIDIA Corporation
+10ec  Realtek Semiconductor Co., Ltd.
+	8168  RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller
+8086  Intel Corporation
+	24fd  Wireless 8265 / 8275

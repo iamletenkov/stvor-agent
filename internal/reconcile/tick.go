@@ -71,6 +71,9 @@ type Ticker struct {
 	States   StateStore
 	Portal   Portal
 	Teleport teleport.Teleport
+	// Telemetry keeps the telemetry token after every poll the portal
+	// accepted the labels token on (200, 304); nil — no telemetry step.
+	Telemetry TelemetryStep
 	// Now is the clock; nil — time.Now.
 	Now func() time.Time
 	// Log gets one line per event (event=poll|apply|skip); nil — discarded.
@@ -163,6 +166,12 @@ func (t *Ticker) Tick(ctx context.Context, manual bool, stop <-chan struct{}) Re
 		// Nothing was sent: the token file and state passed their checks,
 		// so this is a broken invariant; count it as a network failure.
 		resp = portal.Response{Outcome: portal.OutcomeNetwork, Err: err}
+	}
+	if t.Telemetry != nil && !stopped(stop) &&
+		(resp.Outcome == portal.OutcomeOK || resp.Outcome == portal.OutcomeNotModified) {
+		// The labels token was just accepted: the moment to ask for the
+		// telemetry token with it (Stvor plan R4).
+		t.Telemetry.Ensure(ctx, tok)
 	}
 	now := t.now()
 	res := Result{Outcome: Outcome(resp.Outcome), HTTPStatus: resp.HTTPStatus}

@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -159,8 +160,8 @@ func (a *App) resetStateFor(url string) (bool, error) {
 	return true, nil
 }
 
-// runDisable is `stvor-agent disable`: stop and disable the service, remove
-// the token and state.json. Teleport is not called: the managed env/space
+// runDisable is `stvor-agent disable`: stop and disable the service, stop
+// the telemetry service, remove the token, state.json and the telemetry token. Teleport is not called: the managed env/space
 // stay (the node does not move silently). The files go even when systemctl
 // fails — the code is 1 then.
 func (a *App) runDisable(stdout, stderr io.Writer) int {
@@ -170,20 +171,30 @@ func (a *App) runDisable(stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "stvor-agent: disable: служба не остановлена: %v\n", err)
 		code = exitError
 	}
+	if err := a.Systemctl.Stop(ctx, reconcile.TelemetryUnit); err != nil {
+		_, _ = fmt.Fprintf(stderr, "stvor-agent: disable: служба телеметрии не остановлена: %v\n", err)
+		code = exitError
+	}
 	unlock, err := a.Lock.Lock(ctx, daemon.CLILockWait)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "stvor-agent: disable: %v\n", err)
 		return exitError
 	}
 	defer unlock()
-	for _, path := range []string{a.TokenPath, a.StatePath} {
+	// The telemetry token and its fingerprint go too: the next enable asks
+	// for a new one (the unit stays enabled and waits for the token).
+	telSource := filepath.Join(filepath.Dir(a.StatePath), filepath.Base(reconcile.TelemetrySourcePath))
+	for _, path := range []string{a.TokenPath, a.StatePath, a.TelemetryTokenPath, telSource} {
+		if path == "" {
+			continue
+		}
 		if err := a.FS.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
 			_, _ = fmt.Fprintf(stderr, "stvor-agent: disable: %v\n", err)
 			code = exitError
 		}
 	}
 	if code == exitOK {
-		_, _ = fmt.Fprintln(stdout, "агент выключен: токен и состояние удалены, метки Teleport остаются как есть")
+		_, _ = fmt.Fprintln(stdout, "агент выключен: токены и состояние удалены, метки Teleport остаются как есть")
 	}
 	return code
 }

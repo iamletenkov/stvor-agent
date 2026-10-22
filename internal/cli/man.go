@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/iamletenkov/stvor-agent/internal/daemon"
+	"github.com/iamletenkov/stvor-agent/internal/reconcile"
 	"github.com/iamletenkov/stvor-agent/internal/state"
 	"github.com/iamletenkov/stvor-agent/internal/token"
 )
@@ -24,8 +25,15 @@ var manText = map[string]string{
 	"enable": "Reads the portal token from stdin (one line on a terminal), stores URL and token in " +
 		token.DefaultPath + " (mode 0600), resets the state when the URL changes, enables and restarts " +
 		Unit + " and runs one synchronous tick. A network failure of that tick is reported and still exits 0.",
-	"disable": "Disables and stops " + Unit + ", removes the token and the state. " +
-		"The managed labels stay as they are.",
+	"disable": "Disables and stops " + Unit + ", stops " + reconcile.TelemetryUnit +
+		", removes the token, the state and the telemetry token. The managed labels stay as they are.",
+	"telemetry": "The telemetry service, started by systemd as ExecStart of " + reconcile.TelemetryUnit +
+		" as the unprivileged user stvor\\-telemetry; refuses to run as root. It samples /proc and /sys " +
+		"(fast group every 10 s, slow group every 60 s), checks the hardware inventory by its hash, buffers " +
+		"offline on disk and sends to the robot API with the telemetry token that the service " + Unit +
+		" obtains and writes to " + reconcile.TelemetryTokenPath + ". The portal answer may only change " +
+		"intervals, the metric set and buffer limits within ranges compiled into the agent. " +
+		"Exits 0 on SIGTERM after the buffer is written to disk.",
 	"sync": "Runs one reconcile tick now, without the retry pause. Exits 0 when the labels are in effect " +
 		"or on a network or HTTP error (reported), 1 when the answer breaks the contract, " +
 		"the restart is not confirmed or the token is invalid.",
@@ -122,7 +130,14 @@ The systemd unit (ConditionPathExists on the token file).
 .TP
 .I /etc/cream/stvor\-agent/config
 Service settings (see ENVIRONMENT).
-`, roffEscape(token.DefaultPath), roffEscape(state.DefaultPath), roffEscape(daemon.DefaultLockPath), roffEscape(Unit))
+.TP
+.I %s
+Telemetry token (url=, token=), mode 0640 root:stvor\-telemetry; written by \fBrun\fR.
+.TP
+.I %s
+Telemetry buffer and the token\-rejected marker (owner stvor\-telemetry).
+`, roffEscape(token.DefaultPath), roffEscape(state.DefaultPath), roffEscape(daemon.DefaultLockPath), roffEscape(Unit),
+		roffEscape(reconcile.TelemetryTokenPath), roffEscape(TelemetryStateDir))
 	b.WriteString(`.SH EXAMPLES
 Enable the agent with a token from the portal:
 .PP

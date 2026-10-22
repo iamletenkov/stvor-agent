@@ -1,0 +1,495 @@
+{
+  "collected_at": "2026-10-21T12:00:00Z",
+  "system": {
+    "arch": "amd64",
+    "hostname_hash": "3b7c4868c7158859c36807751b3d4362adb828194704aed3d3c09f9be46189de"
+  },
+  "board": {
+    "vendor": "QEMU",
+    "product": "Standard PC (Q35 + ICH9, 2009)",
+    "version": "pc-q35-10.1"
+  },
+  "vm": {
+    "is_vm": true,
+    "hypervisor": "KVM",
+    "platform": "Proxmox"
+  },
+  "os": {
+    "id": "debian",
+    "version_id": "12",
+    "pretty_name": "Debian GNU/Linux 12 (bookworm)",
+    "kernel": "6.1.0-53-amd64"
+  },
+  "cpu": {
+    "vendor": "Intel",
+    "model": "Intel(R) Core(TM) i9-10900K CPU @ 3.70GHz",
+    "cores": 12,
+    "threads": 12,
+    "sockets": 1
+  },
+  "memory": {
+    "total_bytes": 25198014464,
+    "swap_bytes": 8589930496
+  },
+  "bios": {
+    "vendor": "SeaBIOS",
+    "version": "rel-1.17.0-0-gb52ca86e094d-prebuilt.qemu.org",
+    "date": "2014-04-01",
+    "uefi": false
+  },
+  "secure_boot": {
+    "state": "unsupported"
+  },
+  "disks": [
+    {
+      "name": "sda",
+      "model": "QEMU HARDDISK",
+      "type": "virtual",
+      "size_bytes": 236223201280,
+      "removable": false,
+      "partitions": [
+        {
+          "name": "sda1",
+          "size_bytes": 236088966656,
+          "fstype": "ext4",
+          "mountpoints": [
+            "/"
+          ],
+          "is_root": true,
+          "is_efi": false
+        },
+        {
+          "name": "sda14",
+          "size_bytes": 3145728,
+          "mountpoints": [],
+          "is_root": false,
+          "is_efi": false
+        },
+        {
+          "name": "sda15",
+          "size_bytes": 130023424,
+          "fstype": "vfat",
+          "mountpoints": [
+            "/boot/efi"
+          ],
+          "is_root": false,
+          "is_efi": true
+        }
+      ]
+    },
+    {
+      "name": "sr0",
+      "model": "QEMU DVD-ROM",
+      "type": "virtual",
+      "size_bytes": 4194304,
+      "removable": true,
+      "partitions": []
+    }
+  ],
+  "nics": [
+    {
+      "name": "eth0",
+      "type": "ethernet",
+      "driver": "virtio_net",
+      "mac": "bc:24:11:00:00:03",
+      "ipv4": [
+        "192.0.2.10"
+      ],
+      "ipv6": [],
+      "service": false
+    },
+    {
+      "name": "docker0",
+      "type": "ethernet",
+      "mac": "1e:aa:89:1a:b9:fe",
+      "ipv4": [
+        "172.17.0.1"
+      ],
+      "ipv6": [],
+      "service": true
+    },
+    {
+      "name": "lo",
+      "type": "other",
+      "ipv4": [
+        "127.0.0.1"
+      ],
+      "ipv6": [],
+      "service": true
+    }
+  ],
+  "usb": [
+    {
+      "path": "usb1",
+      "vid": "1d6b",
+      "pid": "0002",
+      "product": "EHCI Host Controller",
+      "speed_mbps": 480,
+      "class": "09",
+      "driver": "usb",
+      "children": []
+    },
+    {
+      "path": "usb2",
+      "vid": "1d6b",
+      "pid": "0001",
+      "product": "UHCI Host Controller",
+      "speed_mbps": 12,
+      "class": "09",
+      "driver": "usb",
+      "children": []
+    },
+    {
+      "path": "usb3",
+      "vid": "1d6b",
+      "pid": "0002",
+      "product": "EHCI Host Controller",
+      "speed_mbps": 480,
+      "class": "09",
+      "driver": "usb",
+      "children": [
+        {
+          "path": "3-1",
+          "vid": "0627",
+          "pid": "0001",
+          "manufacturer": "QEMU",
+          "product": "QEMU USB Tablet",
+          "speed_mbps": 480,
+          "class": "00",
+          "serial_hash": "12884b974ab1205d27186cf0e4634a27eeff6ed36b2d330ed2e8adae96e1f136",
+          "driver": "usbhid",
+          "children": []
+        }
+      ]
+    },
+    {
+      "path": "usb4",
+      "vid": "1d6b",
+      "pid": "0001",
+      "product": "UHCI Host Controller",
+      "speed_mbps": 12,
+      "class": "09",
+      "driver": "usb",
+      "children": []
+    },
+    {
+      "path": "usb5",
+      "vid": "1d6b",
+      "pid": "0001",
+      "product": "UHCI Host Controller",
+      "speed_mbps": 12,
+      "class": "09",
+      "driver": "usb",
+      "children": []
+    },
+    {
+      "path": "usb6",
+      "vid": "1d6b",
+      "pid": "0001",
+      "product": "UHCI Host Controller",
+      "speed_mbps": 12,
+      "class": "09",
+      "driver": "usb",
+      "children": []
+    },
+    {
+      "path": "usb7",
+      "vid": "1d6b",
+      "pid": "0001",
+      "product": "UHCI Host Controller",
+      "speed_mbps": 12,
+      "class": "09",
+      "driver": "usb",
+      "children": []
+    },
+    {
+      "path": "usb8",
+      "vid": "1d6b",
+      "pid": "0001",
+      "product": "UHCI Host Controller",
+      "speed_mbps": 12,
+      "class": "09",
+      "driver": "usb",
+      "children": []
+    }
+  ],
+  "pci": [
+    {
+      "address": "0000:00:00.0",
+      "vendor_id": "8086",
+      "device_id": "29c0",
+      "class": "060000",
+      "vendor": "Intel Corporation",
+      "device": "82G33/G31/P35/P31 Express DRAM Controller",
+      "children": []
+    },
+    {
+      "address": "0000:00:01.0",
+      "vendor_id": "1234",
+      "device_id": "1111",
+      "class": "030000",
+      "driver": "bochs-drm",
+      "children": []
+    },
+    {
+      "address": "0000:00:1a.0",
+      "vendor_id": "8086",
+      "device_id": "2937",
+      "class": "0c0300",
+      "vendor": "Intel Corporation",
+      "device": "82801I (ICH9 Family) USB UHCI Controller #4",
+      "driver": "uhci_hcd",
+      "children": [
+        {
+          "address": "0000:00:1a.1",
+          "vendor_id": "8086",
+          "device_id": "2938",
+          "class": "0c0300",
+          "vendor": "Intel Corporation",
+          "device": "82801I (ICH9 Family) USB UHCI Controller #5",
+          "driver": "uhci_hcd",
+          "children": []
+        },
+        {
+          "address": "0000:00:1a.2",
+          "vendor_id": "8086",
+          "device_id": "2939",
+          "class": "0c0300",
+          "vendor": "Intel Corporation",
+          "device": "82801I (ICH9 Family) USB UHCI Controller #6",
+          "driver": "uhci_hcd",
+          "children": []
+        },
+        {
+          "address": "0000:00:1a.7",
+          "vendor_id": "8086",
+          "device_id": "293c",
+          "class": "0c0320",
+          "vendor": "Intel Corporation",
+          "device": "82801I (ICH9 Family) USB2 EHCI Controller #2",
+          "driver": "ehci-pci",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:00:1b.0",
+      "vendor_id": "8086",
+      "device_id": "293e",
+      "class": "040300",
+      "vendor": "Intel Corporation",
+      "device": "82801I (ICH9 Family) HD Audio Controller",
+      "driver": "snd_hda_intel",
+      "children": []
+    },
+    {
+      "address": "0000:00:1c.0",
+      "vendor_id": "1b36",
+      "device_id": "000c",
+      "class": "060400",
+      "vendor": "Red Hat, Inc.",
+      "device": "QEMU PCIe Root port",
+      "driver": "pcieport",
+      "children": [
+        {
+          "address": "0000:00:1c.1",
+          "vendor_id": "1b36",
+          "device_id": "000c",
+          "class": "060400",
+          "vendor": "Red Hat, Inc.",
+          "device": "QEMU PCIe Root port",
+          "driver": "pcieport",
+          "children": []
+        },
+        {
+          "address": "0000:00:1c.2",
+          "vendor_id": "1b36",
+          "device_id": "000c",
+          "class": "060400",
+          "vendor": "Red Hat, Inc.",
+          "device": "QEMU PCIe Root port",
+          "driver": "pcieport",
+          "children": []
+        },
+        {
+          "address": "0000:00:1c.3",
+          "vendor_id": "1b36",
+          "device_id": "000c",
+          "class": "060400",
+          "vendor": "Red Hat, Inc.",
+          "device": "QEMU PCIe Root port",
+          "driver": "pcieport",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:00:1d.0",
+      "vendor_id": "8086",
+      "device_id": "2934",
+      "class": "0c0300",
+      "vendor": "Intel Corporation",
+      "device": "82801I (ICH9 Family) USB UHCI Controller #1",
+      "driver": "uhci_hcd",
+      "children": [
+        {
+          "address": "0000:00:1d.1",
+          "vendor_id": "8086",
+          "device_id": "2935",
+          "class": "0c0300",
+          "vendor": "Intel Corporation",
+          "device": "82801I (ICH9 Family) USB UHCI Controller #2",
+          "driver": "uhci_hcd",
+          "children": []
+        },
+        {
+          "address": "0000:00:1d.2",
+          "vendor_id": "8086",
+          "device_id": "2936",
+          "class": "0c0300",
+          "vendor": "Intel Corporation",
+          "device": "82801I (ICH9 Family) USB UHCI Controller #3",
+          "driver": "uhci_hcd",
+          "children": []
+        },
+        {
+          "address": "0000:00:1d.7",
+          "vendor_id": "8086",
+          "device_id": "293a",
+          "class": "0c0320",
+          "vendor": "Intel Corporation",
+          "device": "82801I (ICH9 Family) USB2 EHCI Controller #1",
+          "driver": "ehci-pci",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:00:1e.0",
+      "vendor_id": "8086",
+      "device_id": "244e",
+      "class": "060401",
+      "vendor": "Intel Corporation",
+      "device": "82801 PCI Bridge",
+      "children": [
+        {
+          "address": "0000:05:01.0",
+          "vendor_id": "1b36",
+          "device_id": "0001",
+          "class": "060400",
+          "vendor": "Red Hat, Inc.",
+          "device": "QEMU PCI-PCI bridge",
+          "children": [
+            {
+              "address": "0000:06:03.0",
+              "vendor_id": "1af4",
+              "device_id": "1002",
+              "class": "00ff00",
+              "vendor": "Red Hat, Inc.",
+              "device": "Virtio memory balloon",
+              "driver": "virtio-pci",
+              "children": []
+            },
+            {
+              "address": "0000:06:05.0",
+              "vendor_id": "1af4",
+              "device_id": "1004",
+              "class": "010000",
+              "vendor": "Red Hat, Inc.",
+              "device": "Virtio SCSI",
+              "driver": "virtio-pci",
+              "children": []
+            },
+            {
+              "address": "0000:06:08.0",
+              "vendor_id": "1af4",
+              "device_id": "1003",
+              "class": "078000",
+              "vendor": "Red Hat, Inc.",
+              "device": "Virtio console",
+              "driver": "virtio-pci",
+              "children": []
+            },
+            {
+              "address": "0000:06:12.0",
+              "vendor_id": "1af4",
+              "device_id": "1000",
+              "class": "020000",
+              "vendor": "Red Hat, Inc.",
+              "device": "Virtio network device",
+              "driver": "virtio-pci",
+              "children": []
+            }
+          ]
+        },
+        {
+          "address": "0000:05:02.0",
+          "vendor_id": "1b36",
+          "device_id": "0001",
+          "class": "060400",
+          "vendor": "Red Hat, Inc.",
+          "device": "QEMU PCI-PCI bridge",
+          "children": []
+        },
+        {
+          "address": "0000:05:03.0",
+          "vendor_id": "1b36",
+          "device_id": "0001",
+          "class": "060400",
+          "vendor": "Red Hat, Inc.",
+          "device": "QEMU PCI-PCI bridge",
+          "children": []
+        },
+        {
+          "address": "0000:05:04.0",
+          "vendor_id": "1b36",
+          "device_id": "0001",
+          "class": "060400",
+          "vendor": "Red Hat, Inc.",
+          "device": "QEMU PCI-PCI bridge",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:00:1f.0",
+      "vendor_id": "8086",
+      "device_id": "2918",
+      "class": "060100",
+      "vendor": "Intel Corporation",
+      "device": "82801IB (ICH9) LPC Interface Controller",
+      "driver": "lpc_ich",
+      "children": [
+        {
+          "address": "0000:00:1f.2",
+          "vendor_id": "8086",
+          "device_id": "2922",
+          "class": "010601",
+          "vendor": "Intel Corporation",
+          "device": "82801IR/IO/IH (ICH9R/DO/DH) 6 port SATA Controller [AHCI mode]",
+          "driver": "ahci",
+          "children": []
+        },
+        {
+          "address": "0000:00:1f.3",
+          "vendor_id": "8086",
+          "device_id": "2930",
+          "class": "0c0500",
+          "vendor": "Intel Corporation",
+          "device": "82801I (ICH9 Family) SMBus Controller",
+          "driver": "i801_smbus",
+          "children": []
+        }
+      ]
+    }
+  ],
+  "gpus": [
+    {
+      "pci_address": "0000:00:01.0",
+      "vendor": "QEMU",
+      "model": "1234:1111",
+      "driver": "bochs-drm"
+    }
+  ],
+  "cameras": []
+}

@@ -1,19 +1,28 @@
 #!/bin/sh
-# prerm of stvor-agent (spec §9.1): on removal the unit is disabled and, with
-# a running systemd, stopped. An upgrade keeps the service running: postinst
-# try-restarts it onto the new binary.
+# prerm of stvor-agent (spec §9.1): on removal both units (labels and telemetry)
+# are disabled and, with a running systemd, stopped. An upgrade keeps them
+# running: postinst try-restarts them onto the new binary. A downgrade to a
+# version without the telemetry unit (< 4.1.0) disables and stops it: the old
+# package does not ship the unit, its enable link would dangle.
 set -e
 
-unit=stvor-agent.service
+# disable UNIT… — disable, and stop with a running systemd.
+disable() {
+	command -v systemctl >/dev/null 2>&1 || return 0
+	if [ -d /run/systemd/system ]; then
+		systemctl disable --now "$@" || true
+	else
+		systemctl disable "$@" || true
+	fi
+}
 
 case "$1" in
 remove | deconfigure)
-	if command -v systemctl >/dev/null 2>&1; then
-		if [ -d /run/systemd/system ]; then
-			systemctl disable --now "$unit" || true
-		else
-			systemctl disable "$unit" || true
-		fi
+	disable stvor-agent.service stvor-agent-telemetry.service
+	;;
+upgrade)
+	if [ -n "${2:-}" ] && dpkg --compare-versions "$2" lt 4.1.0~; then
+		disable stvor-agent-telemetry.service
 	fi
 	;;
 esac

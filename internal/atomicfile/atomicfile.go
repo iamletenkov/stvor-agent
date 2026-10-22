@@ -42,6 +42,17 @@ func (OS) WriteAtomic(path string, data []byte, mode fs.FileMode) error {
 	return write(path, data, mode, ops{rename: os.Rename, syncDir: syncDir})
 }
 
+// WriteAtomicOwned is WriteAtomic with the owner set on the temp file before
+// the rename: the new file appears with mode and uid:gid at once (a reader of
+// the group never meets it as root:root).
+func (OS) WriteAtomicOwned(path string, data []byte, mode fs.FileMode, uid, gid int) error {
+	return write(path, data, mode, ops{rename: os.Rename, syncDir: syncDir,
+		chown: func(f *os.File) error { return f.Chown(uid, gid) }})
+}
+
+// Chown sets the owner of path itself (a symlink is not followed).
+func (OS) Chown(path string, uid, gid int) error { return os.Lchown(path, uid, gid) }
+
 // ReadNoFollow reads a regular file of at most limit bytes. It opens path with
 // O_NOFOLLOW (a symlink is refused) and O_NONBLOCK (a FIFO does not hang the
 // agent) and takes Info from fstat of the same descriptor.
@@ -119,6 +130,7 @@ type ops struct {
 	rename   func(oldpath, newpath string) error
 	syncDir  func(dir string) error
 	syncFile func(f *os.File) error // nil: f.Sync
+	chown    func(f *os.File) error // nil: the owner stays the writer's
 }
 
 func write(path string, data []byte, mode fs.FileMode, o ops) (err error) {
@@ -140,6 +152,11 @@ func write(path string, data []byte, mode fs.FileMode, o ops) (err error) {
 	}()
 	if err = f.Chmod(mode); err != nil {
 		return fmt.Errorf("%s: права: %w", path, err)
+	}
+	if o.chown != nil {
+		if err = o.chown(f); err != nil {
+			return fmt.Errorf("%s: владелец: %w", path, err)
+		}
 	}
 	if _, err = f.Write(data); err != nil {
 		return fmt.Errorf("%s: запись: %w", path, err)

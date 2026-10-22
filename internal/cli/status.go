@@ -34,6 +34,8 @@ type statusDoc struct {
 	Teleport        *teleportDoc `json:"teleport"`
 	Restart         restartDoc   `json:"restart"`
 	LastPoll        *lastPollDoc `json:"last_poll"`
+	// Telemetry is the telemetry service (Stvor ADR-0034); added in 4.1.0.
+	Telemetry telemetryDoc `json:"telemetry"`
 }
 
 type expectedDoc struct {
@@ -113,6 +115,7 @@ func (a *App) collectStatus(ctx context.Context) (statusDoc, []string) {
 		Service: a.Systemctl.IsActive(ctx, Unit),
 		Token:   "ok",
 	}
+	doc.Telemetry = a.collectTelemetry(ctx)
 	tok, terr := token.Read(a.FS, a.TokenPath)
 	if terr != nil {
 		doc.Token = token.Kind(terr)
@@ -216,6 +219,7 @@ func writeHuman(stdout io.Writer, d statusDoc) int {
 		{"teleport", tp},
 		{"перезапуски", restart},
 		{"последний опрос", poll},
+		{"телеметрия", telemetryText(d.Telemetry)},
 	} {
 		_, _ = fmt.Fprintf(w, "%s:\t%s\n", row[0], row[1])
 	}
@@ -223,4 +227,19 @@ func writeHuman(stdout io.Writer, d statusDoc) int {
 		return exitError
 	}
 	return exitOK
+}
+
+// telemetryText is the telemetry row of the human status.
+func telemetryText(t telemetryDoc) string {
+	s := "служба " + t.Service + ", токен " + t.Token
+	if p := t.LastSend; p != nil {
+		s += ", отправка " + p.At.Format(time.RFC3339) + " " + p.Outcome
+		if p.HTTPStatus != 0 {
+			s += fmt.Sprintf(" (HTTP %d)", p.HTTPStatus)
+		}
+	}
+	if b := t.Buffer; b != nil {
+		s += fmt.Sprintf(", буфер %d из %d байт", b.UsedBytes, b.QuotaBytes)
+	}
+	return s
 }

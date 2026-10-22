@@ -1,0 +1,1962 @@
+{
+  "collected_at": "2026-10-21T12:00:00Z",
+  "system": {
+    "arch": "amd64",
+    "hostname_hash": "fa2548d257c99efa530787ef80abbe447f13caf441be36183b7356a4787ad139"
+  },
+  "board": {
+    "vendor": "HUANANZHI",
+    "board_vendor": "HUANANZHI",
+    "board_name": "X99-F8D PLUS"
+  },
+  "vm": {
+    "is_vm": false
+  },
+  "os": {
+    "id": "debian",
+    "version_id": "13",
+    "pretty_name": "Debian GNU/Linux 13 (trixie)",
+    "kernel": "6.17.2-2-pve"
+  },
+  "cpu": {
+    "vendor": "Intel",
+    "model": "Intel(R) Xeon(R) CPU E5-2696 v3 @ 2.30GHz",
+    "cores": 36,
+    "threads": 72,
+    "sockets": 2
+  },
+  "memory": {
+    "total_bytes": 41929269248,
+    "swap_bytes": 8589930496
+  },
+  "bios": {
+    "vendor": "American Megatrends Inc.",
+    "version": "5.11",
+    "date": "2023-04-26",
+    "uefi": true
+  },
+  "secure_boot": {
+    "state": "disabled"
+  },
+  "disks": [
+    {
+      "name": "nvme0n1",
+      "model": "Netac NVMe SSD 2TB",
+      "type": "nvme",
+      "size_bytes": 2000398934016,
+      "removable": false,
+      "serial_hash": "d7f4b481417f596f7a7eac58a1216da79f4b269ba15055d5a2ea2627e56727d0",
+      "partitions": [
+        {
+          "name": "nvme0n1p1",
+          "size_bytes": 1031168,
+          "mountpoints": [],
+          "is_root": false,
+          "is_efi": false
+        },
+        {
+          "name": "nvme0n1p2",
+          "size_bytes": 1073741824,
+          "fstype": "vfat",
+          "mountpoints": [
+            "/boot/efi"
+          ],
+          "is_root": false,
+          "is_efi": true
+        },
+        {
+          "name": "nvme0n1p3",
+          "size_bytes": 1999324126720,
+          "fstype": "ext4",
+          "mountpoints": [
+            "/"
+          ],
+          "is_root": true,
+          "is_efi": false
+        }
+      ]
+    }
+  ],
+  "nics": [
+    {
+      "name": "nic0",
+      "type": "ethernet",
+      "driver": "r8169",
+      "mac": "22:01:7c:c7:55:11",
+      "ipv4": [],
+      "ipv6": [],
+      "service": false
+    },
+    {
+      "name": "nic1",
+      "type": "ethernet",
+      "driver": "r8169",
+      "mac": "22:01:7c:5a:88:87",
+      "ipv4": [],
+      "ipv6": [],
+      "service": false
+    },
+    {
+      "name": "docker0",
+      "type": "ethernet",
+      "mac": "32:7a:49:1a:b9:fe",
+      "ipv4": [],
+      "ipv6": [],
+      "service": true
+    },
+    {
+      "name": "lo",
+      "type": "other",
+      "ipv4": [],
+      "ipv6": [],
+      "service": true
+    },
+    {
+      "name": "vmbr0",
+      "type": "ethernet",
+      "mac": "22:01:7c:b7:b1:9b",
+      "ipv4": [
+        "192.0.2.206"
+      ],
+      "ipv6": [],
+      "service": true
+    }
+  ],
+  "usb": [
+    {
+      "path": "usb1",
+      "vid": "1d6b",
+      "pid": "0002",
+      "product": "EHCI Host Controller",
+      "speed_mbps": 480,
+      "class": "09",
+      "driver": "usb",
+      "children": [
+        {
+          "path": "1-1",
+          "vid": "8087",
+          "pid": "800a",
+          "speed_mbps": 480,
+          "class": "09",
+          "driver": "hub",
+          "children": []
+        }
+      ]
+    },
+    {
+      "path": "usb2",
+      "vid": "1d6b",
+      "pid": "0002",
+      "product": "EHCI Host Controller",
+      "speed_mbps": 480,
+      "class": "09",
+      "driver": "usb",
+      "children": [
+        {
+          "path": "2-1",
+          "vid": "8087",
+          "pid": "8002",
+          "speed_mbps": 480,
+          "class": "09",
+          "driver": "hub",
+          "children": []
+        }
+      ]
+    },
+    {
+      "path": "usb3",
+      "vid": "1d6b",
+      "pid": "0002",
+      "product": "xHCI Host Controller",
+      "speed_mbps": 480,
+      "class": "09",
+      "driver": "usb",
+      "children": []
+    },
+    {
+      "path": "usb4",
+      "vid": "1d6b",
+      "pid": "0003",
+      "product": "xHCI Host Controller",
+      "speed_mbps": 5000,
+      "class": "09",
+      "driver": "usb",
+      "children": []
+    }
+  ],
+  "pci": [
+    {
+      "address": "0000:00:00.0",
+      "vendor_id": "8086",
+      "device_id": "2f00",
+      "class": "060000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DMI2",
+      "children": []
+    },
+    {
+      "address": "0000:00:01.0",
+      "vendor_id": "8086",
+      "device_id": "2f02",
+      "class": "060400",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 PCI Express Root Port 1",
+      "driver": "pcieport",
+      "children": [
+        {
+          "address": "0000:00:01.1",
+          "vendor_id": "8086",
+          "device_id": "2f03",
+          "class": "060400",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 PCI Express Root Port 1",
+          "driver": "pcieport",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:00:1a.0",
+      "vendor_id": "8086",
+      "device_id": "8d2d",
+      "class": "0c0320",
+      "vendor": "Intel Corporation",
+      "device": "C610/X99 series chipset USB Enhanced Host Controller #2",
+      "driver": "ehci-pci",
+      "children": []
+    },
+    {
+      "address": "0000:00:1b.0",
+      "vendor_id": "8086",
+      "device_id": "8d20",
+      "class": "040300",
+      "vendor": "Intel Corporation",
+      "device": "C610/X99 series chipset HD Audio Controller",
+      "driver": "snd_hda_intel",
+      "children": []
+    },
+    {
+      "address": "0000:00:1c.0",
+      "vendor_id": "8086",
+      "device_id": "8d10",
+      "class": "060400",
+      "vendor": "Intel Corporation",
+      "device": "C610/X99 series chipset PCI Express Root Port #1",
+      "driver": "pcieport",
+      "children": [
+        {
+          "address": "0000:00:1c.2",
+          "vendor_id": "8086",
+          "device_id": "8d14",
+          "class": "060400",
+          "vendor": "Intel Corporation",
+          "device": "C610/X99 series chipset PCI Express Root Port #3",
+          "driver": "pcieport",
+          "children": [
+            {
+              "address": "0000:05:00.0",
+              "vendor_id": "10ec",
+              "device_id": "8125",
+              "class": "020000",
+              "vendor": "Realtek Semiconductor Co., Ltd.",
+              "device": "RTL8125 2.5GbE Controller",
+              "driver": "r8169",
+              "children": []
+            }
+          ]
+        },
+        {
+          "address": "0000:00:1c.3",
+          "vendor_id": "8086",
+          "device_id": "8d16",
+          "class": "060400",
+          "vendor": "Intel Corporation",
+          "device": "C610/X99 series chipset PCI Express Root Port #4",
+          "driver": "pcieport",
+          "children": [
+            {
+              "address": "0000:06:00.0",
+              "vendor_id": "10ec",
+              "device_id": "8125",
+              "class": "020000",
+              "vendor": "Realtek Semiconductor Co., Ltd.",
+              "device": "RTL8125 2.5GbE Controller",
+              "driver": "r8169",
+              "children": []
+            }
+          ]
+        },
+        {
+          "address": "0000:00:1c.4",
+          "vendor_id": "8086",
+          "device_id": "8d18",
+          "class": "060400",
+          "vendor": "Intel Corporation",
+          "device": "C610/X99 series chipset PCI Express Root Port #5",
+          "driver": "pcieport",
+          "children": [
+            {
+              "address": "0000:07:00.0",
+              "vendor_id": "1f40",
+              "device_id": "1602",
+              "class": "010802",
+              "vendor": "Netac Technology Co.,Ltd",
+              "driver": "nvme",
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "address": "0000:00:1d.0",
+      "vendor_id": "8086",
+      "device_id": "8d26",
+      "class": "0c0320",
+      "vendor": "Intel Corporation",
+      "device": "C610/X99 series chipset USB Enhanced Host Controller #1",
+      "driver": "ehci-pci",
+      "children": []
+    },
+    {
+      "address": "0000:00:1f.0",
+      "vendor_id": "8086",
+      "device_id": "8d44",
+      "class": "060100",
+      "vendor": "Intel Corporation",
+      "device": "C610/X99 series chipset LPC Controller",
+      "driver": "lpc_ich",
+      "children": [
+        {
+          "address": "0000:00:1f.3",
+          "vendor_id": "8086",
+          "device_id": "8d22",
+          "class": "0c0500",
+          "vendor": "Intel Corporation",
+          "device": "C610/X99 series chipset SMBus Controller",
+          "driver": "i801_smbus",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:00:03.0",
+      "vendor_id": "8086",
+      "device_id": "2f08",
+      "class": "060400",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 PCI Express Root Port 3",
+      "driver": "pcieport",
+      "children": []
+    },
+    {
+      "address": "0000:00:05.0",
+      "vendor_id": "8086",
+      "device_id": "2f28",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Address Map, VTd_Misc, System Management",
+      "children": [
+        {
+          "address": "0000:00:05.1",
+          "vendor_id": "8086",
+          "device_id": "2f29",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Hot Plug",
+          "children": []
+        },
+        {
+          "address": "0000:00:05.2",
+          "vendor_id": "8086",
+          "device_id": "2f2a",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 RAS, Control Status and Global Errors",
+          "children": []
+        },
+        {
+          "address": "0000:00:05.4",
+          "vendor_id": "8086",
+          "device_id": "2f2c",
+          "class": "080020",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 I/O APIC",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:00:11.0",
+      "vendor_id": "8086",
+      "device_id": "8d7c",
+      "class": "ff0000",
+      "vendor": "Intel Corporation",
+      "device": "C610/X99 series chipset SPSR",
+      "children": []
+    },
+    {
+      "address": "0000:00:14.0",
+      "vendor_id": "8086",
+      "device_id": "8d31",
+      "class": "0c0330",
+      "vendor": "Intel Corporation",
+      "device": "C610/X99 series chipset USB xHCI Host Controller",
+      "driver": "xhci_hcd",
+      "children": []
+    },
+    {
+      "address": "0000:00:16.0",
+      "vendor_id": "8086",
+      "device_id": "8d3a",
+      "class": "078000",
+      "vendor": "Intel Corporation",
+      "device": "C610/X99 series chipset MEI Controller #1",
+      "children": [
+        {
+          "address": "0000:00:16.1",
+          "vendor_id": "8086",
+          "device_id": "8d3b",
+          "class": "078000",
+          "vendor": "Intel Corporation",
+          "device": "C610/X99 series chipset MEI Controller #2",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:7f:0b.0",
+      "vendor_id": "8086",
+      "device_id": "2f81",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 R3 QPI Link 0 \u0026 1 Monitoring",
+      "children": [
+        {
+          "address": "0000:7f:0b.1",
+          "vendor_id": "8086",
+          "device_id": "2f36",
+          "class": "110100",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 R3 QPI Link 0 \u0026 1 Monitoring",
+          "driver": "hswep_uncore",
+          "children": []
+        },
+        {
+          "address": "0000:7f:0b.2",
+          "vendor_id": "8086",
+          "device_id": "2f37",
+          "class": "110100",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 R3 QPI Link 0 \u0026 1 Monitoring",
+          "driver": "hswep_uncore",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:7f:0c.0",
+      "vendor_id": "8086",
+      "device_id": "2fe0",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+      "children": [
+        {
+          "address": "0000:7f:0c.1",
+          "vendor_id": "8086",
+          "device_id": "2fe1",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:0c.2",
+          "vendor_id": "8086",
+          "device_id": "2fe2",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:0c.3",
+          "vendor_id": "8086",
+          "device_id": "2fe3",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:0c.4",
+          "vendor_id": "8086",
+          "device_id": "2fe4",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:0c.5",
+          "vendor_id": "8086",
+          "device_id": "2fe5",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:0c.6",
+          "vendor_id": "8086",
+          "device_id": "2fe6",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:0c.7",
+          "vendor_id": "8086",
+          "device_id": "2fe7",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:7f:0d.0",
+      "vendor_id": "8086",
+      "device_id": "2fe8",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+      "children": [
+        {
+          "address": "0000:7f:0d.1",
+          "vendor_id": "8086",
+          "device_id": "2fe9",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:0d.2",
+          "vendor_id": "8086",
+          "device_id": "2fea",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:0d.3",
+          "vendor_id": "8086",
+          "device_id": "2feb",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:0d.4",
+          "vendor_id": "8086",
+          "device_id": "2fec",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:0d.5",
+          "vendor_id": "8086",
+          "device_id": "2fed",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:0d.6",
+          "vendor_id": "8086",
+          "device_id": "2fee",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:0d.7",
+          "vendor_id": "8086",
+          "device_id": "2fef",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:7f:0e.0",
+      "vendor_id": "8086",
+      "device_id": "2ff0",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+      "children": [
+        {
+          "address": "0000:7f:0e.1",
+          "vendor_id": "8086",
+          "device_id": "2ff1",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:7f:0f.0",
+      "vendor_id": "8086",
+      "device_id": "2ff8",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Buffered Ring Agent",
+      "children": [
+        {
+          "address": "0000:7f:0f.1",
+          "vendor_id": "8086",
+          "device_id": "2ff9",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Buffered Ring Agent",
+          "children": []
+        },
+        {
+          "address": "0000:7f:0f.2",
+          "vendor_id": "8086",
+          "device_id": "2ffa",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Buffered Ring Agent",
+          "children": []
+        },
+        {
+          "address": "0000:7f:0f.3",
+          "vendor_id": "8086",
+          "device_id": "2ffb",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Buffered Ring Agent",
+          "children": []
+        },
+        {
+          "address": "0000:7f:0f.4",
+          "vendor_id": "8086",
+          "device_id": "2ffc",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 System Address Decoder \u0026 Broadcast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:0f.5",
+          "vendor_id": "8086",
+          "device_id": "2ffd",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 System Address Decoder \u0026 Broadcast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:0f.6",
+          "vendor_id": "8086",
+          "device_id": "2ffe",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 System Address Decoder \u0026 Broadcast Registers",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:7f:1e.0",
+      "vendor_id": "8086",
+      "device_id": "2f98",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Power Control Unit",
+      "children": [
+        {
+          "address": "0000:7f:1e.1",
+          "vendor_id": "8086",
+          "device_id": "2f99",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Power Control Unit",
+          "children": []
+        },
+        {
+          "address": "0000:7f:1e.2",
+          "vendor_id": "8086",
+          "device_id": "2f9a",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Power Control Unit",
+          "children": []
+        },
+        {
+          "address": "0000:7f:1e.3",
+          "vendor_id": "8086",
+          "device_id": "2fc0",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Power Control Unit",
+          "children": []
+        },
+        {
+          "address": "0000:7f:1e.4",
+          "vendor_id": "8086",
+          "device_id": "2f9c",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Power Control Unit",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:7f:1f.0",
+      "vendor_id": "8086",
+      "device_id": "2f88",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 VCU",
+      "children": [
+        {
+          "address": "0000:7f:1f.2",
+          "vendor_id": "8086",
+          "device_id": "2f8a",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 VCU",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:7f:08.0",
+      "vendor_id": "8086",
+      "device_id": "2f80",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 QPI Link 0",
+      "children": [
+        {
+          "address": "0000:7f:08.2",
+          "vendor_id": "8086",
+          "device_id": "2f32",
+          "class": "110100",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 QPI Link 0",
+          "driver": "hswep_uncore",
+          "children": []
+        },
+        {
+          "address": "0000:7f:08.3",
+          "vendor_id": "8086",
+          "device_id": "2f83",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 QPI Link 0",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:7f:09.0",
+      "vendor_id": "8086",
+      "device_id": "2f90",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 QPI Link 1",
+      "children": [
+        {
+          "address": "0000:7f:09.2",
+          "vendor_id": "8086",
+          "device_id": "2f33",
+          "class": "110100",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 QPI Link 1",
+          "driver": "hswep_uncore",
+          "children": []
+        },
+        {
+          "address": "0000:7f:09.3",
+          "vendor_id": "8086",
+          "device_id": "2f93",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 QPI Link 1",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:7f:10.0",
+      "vendor_id": "8086",
+      "device_id": "2f1d",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 PCIe Ring Interface",
+      "children": [
+        {
+          "address": "0000:7f:10.1",
+          "vendor_id": "8086",
+          "device_id": "2f34",
+          "class": "110100",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 PCIe Ring Interface",
+          "driver": "hswep_uncore",
+          "children": []
+        },
+        {
+          "address": "0000:7f:10.5",
+          "vendor_id": "8086",
+          "device_id": "2f1e",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Scratchpad \u0026 Semaphore Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:10.6",
+          "vendor_id": "8086",
+          "device_id": "2f7d",
+          "class": "110100",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Scratchpad \u0026 Semaphore Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:10.7",
+          "vendor_id": "8086",
+          "device_id": "2f1f",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Scratchpad \u0026 Semaphore Registers",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:7f:12.0",
+      "vendor_id": "8086",
+      "device_id": "2fa0",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Home Agent 0",
+      "children": [
+        {
+          "address": "0000:7f:12.1",
+          "vendor_id": "8086",
+          "device_id": "2f30",
+          "class": "110100",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Home Agent 0",
+          "driver": "hswep_uncore",
+          "children": []
+        },
+        {
+          "address": "0000:7f:12.4",
+          "vendor_id": "8086",
+          "device_id": "2f60",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Home Agent 1",
+          "children": []
+        },
+        {
+          "address": "0000:7f:12.5",
+          "vendor_id": "8086",
+          "device_id": "2f38",
+          "class": "110100",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Home Agent 1",
+          "driver": "hswep_uncore",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:7f:13.0",
+      "vendor_id": "8086",
+      "device_id": "2fa8",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Target Address, Thermal \u0026 RAS Registers",
+      "children": [
+        {
+          "address": "0000:7f:13.1",
+          "vendor_id": "8086",
+          "device_id": "2f71",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Target Address, Thermal \u0026 RAS Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:13.2",
+          "vendor_id": "8086",
+          "device_id": "2faa",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Channel Target Address Decoder",
+          "children": []
+        },
+        {
+          "address": "0000:7f:13.3",
+          "vendor_id": "8086",
+          "device_id": "2fab",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Channel Target Address Decoder",
+          "children": []
+        },
+        {
+          "address": "0000:7f:13.6",
+          "vendor_id": "8086",
+          "device_id": "2fae",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO Channel 0/1 Broadcast",
+          "children": []
+        },
+        {
+          "address": "0000:7f:13.7",
+          "vendor_id": "8086",
+          "device_id": "2faf",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO Global Broadcast",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:7f:14.0",
+      "vendor_id": "8086",
+      "device_id": "2fb0",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Channel 0 Thermal Control",
+      "driver": "hswep_uncore",
+      "children": [
+        {
+          "address": "0000:7f:14.1",
+          "vendor_id": "8086",
+          "device_id": "2fb1",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Channel 1 Thermal Control",
+          "driver": "hswep_uncore",
+          "children": []
+        },
+        {
+          "address": "0000:7f:14.2",
+          "vendor_id": "8086",
+          "device_id": "2fb2",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Channel 0 ERROR Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:14.3",
+          "vendor_id": "8086",
+          "device_id": "2fb3",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Channel 1 ERROR Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:14.4",
+          "vendor_id": "8086",
+          "device_id": "2fbc",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 0 \u0026 1",
+          "children": []
+        },
+        {
+          "address": "0000:7f:14.5",
+          "vendor_id": "8086",
+          "device_id": "2fbd",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 0 \u0026 1",
+          "children": []
+        },
+        {
+          "address": "0000:7f:14.6",
+          "vendor_id": "8086",
+          "device_id": "2fbe",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 0 \u0026 1",
+          "children": []
+        },
+        {
+          "address": "0000:7f:14.7",
+          "vendor_id": "8086",
+          "device_id": "2fbf",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 0 \u0026 1",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:7f:16.0",
+      "vendor_id": "8086",
+      "device_id": "2f68",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Target Address, Thermal \u0026 RAS Registers",
+      "children": [
+        {
+          "address": "0000:7f:16.1",
+          "vendor_id": "8086",
+          "device_id": "2f79",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Target Address, Thermal \u0026 RAS Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:16.2",
+          "vendor_id": "8086",
+          "device_id": "2f6a",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Channel Target Address Decoder",
+          "children": []
+        },
+        {
+          "address": "0000:7f:16.3",
+          "vendor_id": "8086",
+          "device_id": "2f6b",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Channel Target Address Decoder",
+          "children": []
+        },
+        {
+          "address": "0000:7f:16.6",
+          "vendor_id": "8086",
+          "device_id": "2f6e",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO Channel 2/3 Broadcast",
+          "children": []
+        },
+        {
+          "address": "0000:7f:16.7",
+          "vendor_id": "8086",
+          "device_id": "2f6f",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO Global Broadcast",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:7f:17.0",
+      "vendor_id": "8086",
+      "device_id": "2fd0",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Channel 0 Thermal Control",
+      "driver": "hswep_uncore",
+      "children": [
+        {
+          "address": "0000:7f:17.1",
+          "vendor_id": "8086",
+          "device_id": "2fd1",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Channel 1 Thermal Control",
+          "driver": "hswep_uncore",
+          "children": []
+        },
+        {
+          "address": "0000:7f:17.2",
+          "vendor_id": "8086",
+          "device_id": "2fd2",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Channel 0 ERROR Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:17.3",
+          "vendor_id": "8086",
+          "device_id": "2fd3",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Channel 1 ERROR Registers",
+          "children": []
+        },
+        {
+          "address": "0000:7f:17.4",
+          "vendor_id": "8086",
+          "device_id": "2fb8",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 2 \u0026 3",
+          "children": []
+        },
+        {
+          "address": "0000:7f:17.5",
+          "vendor_id": "8086",
+          "device_id": "2fb9",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 2 \u0026 3",
+          "children": []
+        },
+        {
+          "address": "0000:7f:17.6",
+          "vendor_id": "8086",
+          "device_id": "2fba",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 2 \u0026 3",
+          "children": []
+        },
+        {
+          "address": "0000:7f:17.7",
+          "vendor_id": "8086",
+          "device_id": "2fbb",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 2 \u0026 3",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:80:03.0",
+      "vendor_id": "8086",
+      "device_id": "2f08",
+      "class": "060400",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 PCI Express Root Port 3",
+      "driver": "pcieport",
+      "children": [
+        {
+          "address": "0000:81:00.0",
+          "vendor_id": "10de",
+          "device_id": "2206",
+          "class": "030000",
+          "vendor": "NVIDIA Corporation",
+          "device": "GA102 [GeForce RTX 3080]",
+          "driver": "vfio-pci",
+          "children": [
+            {
+              "address": "0000:81:00.1",
+              "vendor_id": "10de",
+              "device_id": "1aef",
+              "class": "040300",
+              "vendor": "NVIDIA Corporation",
+              "device": "GA102 High Definition Audio Controller",
+              "driver": "vfio-pci",
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "address": "0000:80:05.0",
+      "vendor_id": "8086",
+      "device_id": "2f28",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Address Map, VTd_Misc, System Management",
+      "children": [
+        {
+          "address": "0000:80:05.1",
+          "vendor_id": "8086",
+          "device_id": "2f29",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Hot Plug",
+          "children": []
+        },
+        {
+          "address": "0000:80:05.2",
+          "vendor_id": "8086",
+          "device_id": "2f2a",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 RAS, Control Status and Global Errors",
+          "children": []
+        },
+        {
+          "address": "0000:80:05.4",
+          "vendor_id": "8086",
+          "device_id": "2f2c",
+          "class": "080020",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 I/O APIC",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:ff:0b.0",
+      "vendor_id": "8086",
+      "device_id": "2f81",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 R3 QPI Link 0 \u0026 1 Monitoring",
+      "children": [
+        {
+          "address": "0000:ff:0b.1",
+          "vendor_id": "8086",
+          "device_id": "2f36",
+          "class": "110100",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 R3 QPI Link 0 \u0026 1 Monitoring",
+          "driver": "hswep_uncore",
+          "children": []
+        },
+        {
+          "address": "0000:ff:0b.2",
+          "vendor_id": "8086",
+          "device_id": "2f37",
+          "class": "110100",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 R3 QPI Link 0 \u0026 1 Monitoring",
+          "driver": "hswep_uncore",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:ff:0c.0",
+      "vendor_id": "8086",
+      "device_id": "2fe0",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+      "children": [
+        {
+          "address": "0000:ff:0c.1",
+          "vendor_id": "8086",
+          "device_id": "2fe1",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:0c.2",
+          "vendor_id": "8086",
+          "device_id": "2fe2",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:0c.3",
+          "vendor_id": "8086",
+          "device_id": "2fe3",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:0c.4",
+          "vendor_id": "8086",
+          "device_id": "2fe4",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:0c.5",
+          "vendor_id": "8086",
+          "device_id": "2fe5",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:0c.6",
+          "vendor_id": "8086",
+          "device_id": "2fe6",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:0c.7",
+          "vendor_id": "8086",
+          "device_id": "2fe7",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:ff:0d.0",
+      "vendor_id": "8086",
+      "device_id": "2fe8",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+      "children": [
+        {
+          "address": "0000:ff:0d.1",
+          "vendor_id": "8086",
+          "device_id": "2fe9",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:0d.2",
+          "vendor_id": "8086",
+          "device_id": "2fea",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:0d.3",
+          "vendor_id": "8086",
+          "device_id": "2feb",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:0d.4",
+          "vendor_id": "8086",
+          "device_id": "2fec",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:0d.5",
+          "vendor_id": "8086",
+          "device_id": "2fed",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:0d.6",
+          "vendor_id": "8086",
+          "device_id": "2fee",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:0d.7",
+          "vendor_id": "8086",
+          "device_id": "2fef",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:ff:0e.0",
+      "vendor_id": "8086",
+      "device_id": "2ff0",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+      "children": [
+        {
+          "address": "0000:ff:0e.1",
+          "vendor_id": "8086",
+          "device_id": "2ff1",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Unicast Registers",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:ff:0f.0",
+      "vendor_id": "8086",
+      "device_id": "2ff8",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Buffered Ring Agent",
+      "children": [
+        {
+          "address": "0000:ff:0f.1",
+          "vendor_id": "8086",
+          "device_id": "2ff9",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Buffered Ring Agent",
+          "children": []
+        },
+        {
+          "address": "0000:ff:0f.2",
+          "vendor_id": "8086",
+          "device_id": "2ffa",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Buffered Ring Agent",
+          "children": []
+        },
+        {
+          "address": "0000:ff:0f.3",
+          "vendor_id": "8086",
+          "device_id": "2ffb",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Buffered Ring Agent",
+          "children": []
+        },
+        {
+          "address": "0000:ff:0f.4",
+          "vendor_id": "8086",
+          "device_id": "2ffc",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 System Address Decoder \u0026 Broadcast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:0f.5",
+          "vendor_id": "8086",
+          "device_id": "2ffd",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 System Address Decoder \u0026 Broadcast Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:0f.6",
+          "vendor_id": "8086",
+          "device_id": "2ffe",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 System Address Decoder \u0026 Broadcast Registers",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:ff:1e.0",
+      "vendor_id": "8086",
+      "device_id": "2f98",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Power Control Unit",
+      "children": [
+        {
+          "address": "0000:ff:1e.1",
+          "vendor_id": "8086",
+          "device_id": "2f99",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Power Control Unit",
+          "children": []
+        },
+        {
+          "address": "0000:ff:1e.2",
+          "vendor_id": "8086",
+          "device_id": "2f9a",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Power Control Unit",
+          "children": []
+        },
+        {
+          "address": "0000:ff:1e.3",
+          "vendor_id": "8086",
+          "device_id": "2fc0",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Power Control Unit",
+          "children": []
+        },
+        {
+          "address": "0000:ff:1e.4",
+          "vendor_id": "8086",
+          "device_id": "2f9c",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Power Control Unit",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:ff:1f.0",
+      "vendor_id": "8086",
+      "device_id": "2f88",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 VCU",
+      "children": [
+        {
+          "address": "0000:ff:1f.2",
+          "vendor_id": "8086",
+          "device_id": "2f8a",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 VCU",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:ff:08.0",
+      "vendor_id": "8086",
+      "device_id": "2f80",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 QPI Link 0",
+      "children": [
+        {
+          "address": "0000:ff:08.2",
+          "vendor_id": "8086",
+          "device_id": "2f32",
+          "class": "110100",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 QPI Link 0",
+          "driver": "hswep_uncore",
+          "children": []
+        },
+        {
+          "address": "0000:ff:08.3",
+          "vendor_id": "8086",
+          "device_id": "2f83",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 QPI Link 0",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:ff:09.0",
+      "vendor_id": "8086",
+      "device_id": "2f90",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 QPI Link 1",
+      "children": [
+        {
+          "address": "0000:ff:09.2",
+          "vendor_id": "8086",
+          "device_id": "2f33",
+          "class": "110100",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 QPI Link 1",
+          "driver": "hswep_uncore",
+          "children": []
+        },
+        {
+          "address": "0000:ff:09.3",
+          "vendor_id": "8086",
+          "device_id": "2f93",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 QPI Link 1",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:ff:10.0",
+      "vendor_id": "8086",
+      "device_id": "2f1d",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 PCIe Ring Interface",
+      "children": [
+        {
+          "address": "0000:ff:10.1",
+          "vendor_id": "8086",
+          "device_id": "2f34",
+          "class": "110100",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 PCIe Ring Interface",
+          "driver": "hswep_uncore",
+          "children": []
+        },
+        {
+          "address": "0000:ff:10.5",
+          "vendor_id": "8086",
+          "device_id": "2f1e",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Scratchpad \u0026 Semaphore Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:10.6",
+          "vendor_id": "8086",
+          "device_id": "2f7d",
+          "class": "110100",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Scratchpad \u0026 Semaphore Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:10.7",
+          "vendor_id": "8086",
+          "device_id": "2f1f",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Scratchpad \u0026 Semaphore Registers",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:ff:12.0",
+      "vendor_id": "8086",
+      "device_id": "2fa0",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Home Agent 0",
+      "children": [
+        {
+          "address": "0000:ff:12.1",
+          "vendor_id": "8086",
+          "device_id": "2f30",
+          "class": "110100",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Home Agent 0",
+          "driver": "hswep_uncore",
+          "children": []
+        },
+        {
+          "address": "0000:ff:12.4",
+          "vendor_id": "8086",
+          "device_id": "2f60",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Home Agent 1",
+          "children": []
+        },
+        {
+          "address": "0000:ff:12.5",
+          "vendor_id": "8086",
+          "device_id": "2f38",
+          "class": "110100",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Home Agent 1",
+          "driver": "hswep_uncore",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:ff:13.0",
+      "vendor_id": "8086",
+      "device_id": "2fa8",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Target Address, Thermal \u0026 RAS Registers",
+      "children": [
+        {
+          "address": "0000:ff:13.1",
+          "vendor_id": "8086",
+          "device_id": "2f71",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Target Address, Thermal \u0026 RAS Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:13.2",
+          "vendor_id": "8086",
+          "device_id": "2faa",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Channel Target Address Decoder",
+          "children": []
+        },
+        {
+          "address": "0000:ff:13.3",
+          "vendor_id": "8086",
+          "device_id": "2fab",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Channel Target Address Decoder",
+          "children": []
+        },
+        {
+          "address": "0000:ff:13.6",
+          "vendor_id": "8086",
+          "device_id": "2fae",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO Channel 0/1 Broadcast",
+          "children": []
+        },
+        {
+          "address": "0000:ff:13.7",
+          "vendor_id": "8086",
+          "device_id": "2faf",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO Global Broadcast",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:ff:14.0",
+      "vendor_id": "8086",
+      "device_id": "2fb0",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Channel 0 Thermal Control",
+      "driver": "hswep_uncore",
+      "children": [
+        {
+          "address": "0000:ff:14.1",
+          "vendor_id": "8086",
+          "device_id": "2fb1",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Channel 1 Thermal Control",
+          "driver": "hswep_uncore",
+          "children": []
+        },
+        {
+          "address": "0000:ff:14.2",
+          "vendor_id": "8086",
+          "device_id": "2fb2",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Channel 0 ERROR Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:14.3",
+          "vendor_id": "8086",
+          "device_id": "2fb3",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 0 Channel 1 ERROR Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:14.4",
+          "vendor_id": "8086",
+          "device_id": "2fbc",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 0 \u0026 1",
+          "children": []
+        },
+        {
+          "address": "0000:ff:14.5",
+          "vendor_id": "8086",
+          "device_id": "2fbd",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 0 \u0026 1",
+          "children": []
+        },
+        {
+          "address": "0000:ff:14.6",
+          "vendor_id": "8086",
+          "device_id": "2fbe",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 0 \u0026 1",
+          "children": []
+        },
+        {
+          "address": "0000:ff:14.7",
+          "vendor_id": "8086",
+          "device_id": "2fbf",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 0 \u0026 1",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:ff:16.0",
+      "vendor_id": "8086",
+      "device_id": "2f68",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Target Address, Thermal \u0026 RAS Registers",
+      "children": [
+        {
+          "address": "0000:ff:16.1",
+          "vendor_id": "8086",
+          "device_id": "2f79",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Target Address, Thermal \u0026 RAS Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:16.2",
+          "vendor_id": "8086",
+          "device_id": "2f6a",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Channel Target Address Decoder",
+          "children": []
+        },
+        {
+          "address": "0000:ff:16.3",
+          "vendor_id": "8086",
+          "device_id": "2f6b",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Channel Target Address Decoder",
+          "children": []
+        },
+        {
+          "address": "0000:ff:16.6",
+          "vendor_id": "8086",
+          "device_id": "2f6e",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO Channel 2/3 Broadcast",
+          "children": []
+        },
+        {
+          "address": "0000:ff:16.7",
+          "vendor_id": "8086",
+          "device_id": "2f6f",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO Global Broadcast",
+          "children": []
+        }
+      ]
+    },
+    {
+      "address": "0000:ff:17.0",
+      "vendor_id": "8086",
+      "device_id": "2fd0",
+      "class": "088000",
+      "vendor": "Intel Corporation",
+      "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Channel 0 Thermal Control",
+      "driver": "hswep_uncore",
+      "children": [
+        {
+          "address": "0000:ff:17.1",
+          "vendor_id": "8086",
+          "device_id": "2fd1",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Channel 1 Thermal Control",
+          "driver": "hswep_uncore",
+          "children": []
+        },
+        {
+          "address": "0000:ff:17.2",
+          "vendor_id": "8086",
+          "device_id": "2fd2",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Channel 0 ERROR Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:17.3",
+          "vendor_id": "8086",
+          "device_id": "2fd3",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 Integrated Memory Controller 1 Channel 1 ERROR Registers",
+          "children": []
+        },
+        {
+          "address": "0000:ff:17.4",
+          "vendor_id": "8086",
+          "device_id": "2fb8",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 2 \u0026 3",
+          "children": []
+        },
+        {
+          "address": "0000:ff:17.5",
+          "vendor_id": "8086",
+          "device_id": "2fb9",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 2 \u0026 3",
+          "children": []
+        },
+        {
+          "address": "0000:ff:17.6",
+          "vendor_id": "8086",
+          "device_id": "2fba",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 2 \u0026 3",
+          "children": []
+        },
+        {
+          "address": "0000:ff:17.7",
+          "vendor_id": "8086",
+          "device_id": "2fbb",
+          "class": "088000",
+          "vendor": "Intel Corporation",
+          "device": "Xeon E7 v3/Xeon E5 v3/Core i7 DDRIO (VMSE) 2 \u0026 3",
+          "children": []
+        }
+      ]
+    }
+  ],
+  "gpus": [
+    {
+      "pci_address": "0000:81:00.0",
+      "vendor": "NVIDIA Corporation",
+      "model": "GA102 [GeForce RTX 3080]",
+      "driver": "vfio-pci"
+    }
+  ],
+  "cameras": []
+}

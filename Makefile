@@ -37,7 +37,7 @@ HEAVY           = $(if $(STVOR_AGENT_HEAVY_HELD),,flock $(HEAVY_LOCK) env STVOR_
 # Сопровождающие скрипты пакета и инструменты упаковки — под shellcheck в make lint.
 SH_FILES       := packaging/postinst packaging/prerm packaging/postrm \
 	tools/check-deb.sh tools/check-deb-live.sh tools/repro-check.sh \
-	tools/check-test-map.sh tools/check-contract-fixtures.sh \
+	tools/check-test-map.sh tools/check-contract-fixtures.sh tools/check-telemetry-contract.sh tools/collect-fixture.sh \
 	test/integration/cream-deb.sh test/integration/run.sh test/integration/inside.sh \
 	test/e2e/run.sh test/e2e/inside.sh test/e2e/teleport-fake/teleport
 
@@ -57,7 +57,7 @@ GO = $(DOCKER_RUN) $(GO_IMAGE)
 GO_FILES = find . \( -path ./.cache -o -path ./dist -o -path ./.scratchpad -o -path ./.git \) -prune -o -name '*.go' -print
 
 .DEFAULT_GOAL := help
-.PHONY: help cache build build-all test test-integration e2e e2e-unlocked lint actionlint contract-fixtures fmt man deb \
+.PHONY: help cache build build-all test test-integration e2e e2e-unlocked lint actionlint contract-fixtures telemetry-contract fmt man deb \
 	deb-unlocked repro-check vuln ci ci-unlocked clean
 
 help: ## список целей
@@ -121,7 +121,7 @@ fmt: cache ## gofmt -w по всему модулю
 
 # Карта docs/test-map.md сверяется со списком Go-тестов (go test -list) —
 # tools/check-test-map.sh: имена из карты существуют, пустых строк нет.
-lint: cache actionlint contract-fixtures ## gofmt -l, go vet, golangci-lint, docs/test-map.md, shellcheck, actionlint, образцы контракта
+lint: cache actionlint contract-fixtures telemetry-contract ## gofmt -l, go vet, golangci-lint, docs/test-map.md, shellcheck, actionlint, образцы и пины контрактов
 	@out="$$($(GO) sh -c "$(GO_FILES) | xargs -r gofmt -l")"; if [ -n "$$out" ]; then echo "gofmt: не отформатированы (make fmt):"; echo "$$out"; exit 1; fi
 	$(GO) go vet ./...
 	$(GO) go vet -tags integration ./internal/teleport
@@ -138,6 +138,12 @@ actionlint: ## actionlint по .github/workflows (образ закреплён 
 # соседнем cream-extensions (CREAM_EXTENSIONS_DIR, по умолчанию ../cream-extensions).
 contract-fixtures: ## сверка файлов-образцов контракта с пином и с cream-extensions
 	tools/check-contract-fixtures.sh
+
+# Копия контракта телеметрии v1 портала (internal/telemetry/contract/v1.json, зашита в
+# бинарь) равна пину tools/telemetry-contract.sha256; STVOR_CONTRACT=<путь к v1.json портала> —
+# ещё и побайтная сверка с эталоном.
+telemetry-contract: ## сверка копии контракта телеметрии с пином tools/telemetry-contract.sha256
+	tools/check-telemetry-contract.sh
 
 # Оба .deb (или один — ARCH=amd64|arm64) из готовых dist/stvor-agent-linux-* и
 # man-страницы $(RELEASE_DIR)/man/stvor-agent.8.gz (tools/genman): nfpm,

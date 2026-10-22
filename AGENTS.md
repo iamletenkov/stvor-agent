@@ -34,6 +34,7 @@ internal/systemd/  — вызовы systemctl; internal/version/ — верси�
 packaging/         — юнит stvor-agent.service (+ unit_test.go), nfpm.yaml, postinst/prerm/postrm, copyright
 test/integration/  — адаптер против настоящего cream в debian:12 (`make test-integration`)
 test/e2e/          — сквозной тест в debian:12 с systemd: cream, каталог по пину, fakeportal (`make e2e`)
+test/bench/telemetry/ — цикл `telemetry` с файлами в одном каталоге: замер бюджета на живой машине без пакета
 tools/             — check-test-map, check-contract-fixtures (+ пин contract-fixtures.sha256), check-deb, check-deb-live, repro-check
 docs/              — README.md (индекс), getting-started.md, guides/ (по задачам), reference/ (CLI, настройки, контракт портала), architecture.md, development.md, runbooks/ (выпуск), test-map.md, history/, adr/, specs/, plans/, research/, STATUS.md
 .claude/           — агенты, skills, правила, хуки Claude Code

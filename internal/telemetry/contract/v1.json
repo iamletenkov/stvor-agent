@@ -1,0 +1,267 @@
+{
+  "contract": "stvor-robot-telemetry",
+  "version": 1,
+  "schema": 1,
+  "accepted_schemas": [1],
+  "docs": {
+    "spec": "docs/specs/2026-10-21-robot-telemetry.md",
+    "plan": "docs/plans/2026-10-21-robot-telemetry.md",
+    "adr": "docs/adr/0034-robot-telemetry-channel-and-storage.md",
+    "pin": "backend/app/modules/robot_telemetry/contract/v1.sha256; у агента — tools/telemetry-contract.sha256",
+    "conventions": "Типы полей: string, int, number, bool, rfc3339 (UTC с миллисекундами), ulid (26 знаков Crockford base32), sha256 (64 hex в нижнем регистре), T[] — массив, object — вложенный раздел. «?» в конце типа — поле необязательно. max — длина строки в знаках или число элементов массива. Неизвестные поля сервер игнорирует; переименование метрики, метки или поля — новая схема. Имена метрик — OpenTelemetry semconv; в VictoriaMetrics «.» заменяется на «_», суффиксы единиц не добавляются (R7)."
+  },
+  "endpoints": {
+    "base": "/robot-api/v1",
+    "telemetry_token": {"method": "POST", "path": "/telemetry-token", "auth": "токен меток робота (Bearer)", "service": "backend"},
+    "metrics": {"method": "POST", "path": "/metrics", "auth": "токен телеметрии (Bearer)", "service": "ingest", "content_encoding": "gzip"},
+    "inventory": {"method": "PUT", "path": "/inventory", "auth": "токен телеметрии (Bearer)", "service": "ingest", "content_encoding": "gzip"},
+    "events": {"method": "POST", "path": "/events", "auth": "токен телеметрии (Bearer)", "service": "ingest", "content_encoding": "gzip"}
+  },
+  "statuses": {
+    "200": "принято (status: accepted | duplicate | match); тело — конфигурация",
+    "202": "принято, сервер просит снизить темп выгрузки хвоста (next_after_ms); тело — конфигурация",
+    "400": "пачка не декодируется или не соответствует контракту (code: telemetry.malformed | telemetry.invalid | telemetry.schema_unsupported | telemetry.inventory_hash_mismatch): агент удаляет её из буфера (Ack) и пишет в журнал, не повторяет",
+    "401": "токен не принят: служба перечитывает файл токена, затем пишет маркер token-rejected (R4)",
+    "409": "конфликт; исход — по полю code (reply_codes): clone_rejected — пауза 1 ч и событие portal.clone_rejected; tail_rejected — пачка не будет принята никогда: агент удаляет её из буфера (Ack) и пишет запись в свой журнал, не повторяет; need_body (inventory) — прислать полное тело",
+    "413": "тело больше лимита: агент делит пачку пополам",
+    "429": "Retry-After обязателен к исполнению",
+    "503": "Retry-After (VM недоступна — 30 с); курсор не сдвигается"
+  },
+  "reply_codes": {
+    "field": "code",
+    "about": "Исход ответа агент определяет ТОЛЬКО по полю code (строка из values); поле error (telemetry.<code>) и message — для людей и журналов, по ним не ветвятся. Пример тела 409 клона: {\"code\": \"clone_rejected\", \"message\": \"…\", \"error\": \"telemetry.clone_rejected\"}",
+    "values": {
+      "duplicate": {"status": 200, "endpoints": ["metrics"], "action": "seq ≤ last_seq: пачка уже принята — Ack, тело — конфигурация"},
+      "need_body": {"status": 409, "endpoints": ["inventory"], "action": "хэш не совпал с открытой версией — повторить PUT с полным телом"},
+      "clone_rejected": {"status": 409, "endpoints": ["metrics", "inventory", "events"], "action": "под токеном пишет другая машина; у помеченного клоном робота инвентарь и события принимаются только от закреплённой машины с правдоподобной загрузкой (поля отправителя обязательны): пачку не удалять, пауза 1 ч, событие portal.clone_rejected"},
+      "tail_rejected": {"status": 409, "endpoints": ["metrics"], "action": "хвост прежней загрузки, время которого не проверить (часы без синхронизации и якоря): пачка не будет принята никогда — Ack (удалить из буфера), запись в журнал агента, не повторять; клоном робот не помечается"}
+    }
+  },
+  "retry": {"backoff_min_s": 1, "backoff_max_s": 600, "jitter": "full", "in_flight": 1, "order": "снимок и свежие точки → события → хвост буфера от старого к новому"},
+  "limits": {
+    "body_gzip_max_bytes": 1048576,
+    "body_inflated_max_bytes": 8388608,
+    "series_per_batch_max": 2000,
+    "points_per_batch_max": 50000,
+    "ifaces_per_machine_max": 32,
+    "filesystems_per_machine_max": 64,
+    "disks_per_machine_max": 64,
+    "thermal_zones_per_machine_max": 64,
+    "events_per_request_max": 500,
+    "event_params_max_bytes": 2048,
+    "failed_units_max": 32,
+    "inventory_body_max_bytes": 262144,
+    "inventory_string_max": 256,
+    "label_value_max": 128,
+    "point_max_age_days": 30,
+    "token_cache_s": 60,
+    "string_sanitize": "строки инвентаря и значения меток обрезаются до лимита, управляющие символы удаляются"
+  },
+  "labels": {
+    "server_only": ["robot"],
+    "dropped_from_body": ["robot", "space", "space_id", "robot_id", "instance", "job", "__name__"],
+    "free": {
+      "iface": {"pattern": "^[A-Za-z0-9_.:@-]{1,15}$", "about": "имя сетевого интерфейса ядра (IFNAMSIZ)"},
+      "device": {"pattern": "^[A-Za-z0-9_.:/-]{1,64}$", "about": "блочное устройство без /dev/ (nvme0n1, mmcblk0p1, sda)"},
+      "mountpoint": {"pattern": "^/[^\\u0000-\\u001f]{0,127}$", "about": "точка монтирования реальной ФС"},
+      "cpu": {"pattern": "^[0-9]{1,4}$", "about": "номер логического CPU; только при per_core"},
+      "zone": {"pattern": "^[^\\u0000-\\u001f]{1,64}$", "about": "thermal_zone<N>/type или hwmon:<name>/<label>"},
+      "unit": {"pattern": "^[A-Za-z0-9@_.:\\\\-]{1,128}$", "about": "юнит systemd; в фазе 1 рядов с этой меткой нет — список упавших юнитов идёт в поле пачки failed_units"}
+    },
+    "enum": {
+      "state": ["used", "free", "buffers", "cached", "reserved"],
+      "direction": ["receive", "transmit", "read", "write"],
+      "mode": ["user", "nice", "system", "idle", "iowait", "irq", "softirq", "steal"],
+      "type": ["some", "full", "core", "package", "ext2", "ext3", "ext4", "xfs", "btrfs", "f2fs", "vfat", "exfat", "ntfs", "ntfs3", "fuseblk", "zfs", "jfs", "nfs", "nfs4", "cifs", "other"]
+    }
+  },
+  "groups": {
+    "fast": {"interval_s": 10, "about": "CPU, память, сеть, дисковый I/O"},
+    "slow": {"interval_s": 60, "about": "ФС, температуры, система, свойства линка"}
+  },
+  "metrics": [
+    {"name": "system.cpu.time", "type": "counter", "group": "fast", "unit": "s", "labels": ["mode", "cpu"], "required_labels": ["mode"], "capability": null, "about": "время CPU по режимам; cpu — только при per_core"},
+    {"name": "system.cpu.logical.count", "type": "gauge", "group": "fast", "unit": "{cpu}", "labels": [], "capability": null, "about": "онлайн логические CPU (ёмкость)"},
+    {"name": "system.cpu.load_average.1m", "type": "gauge", "group": "fast", "unit": "{thread}", "labels": [], "capability": null},
+    {"name": "system.cpu.load_average.5m", "type": "gauge", "group": "fast", "unit": "{thread}", "labels": [], "capability": null},
+    {"name": "system.cpu.load_average.15m", "type": "gauge", "group": "fast", "unit": "{thread}", "labels": [], "capability": null},
+    {"name": "system.cpu.frequency", "type": "gauge", "group": "fast", "unit": "Hz", "labels": ["cpu"], "capability": "cpufreq", "about": "средняя по CPU; cpu — только при per_core"},
+    {"name": "system.cpu.throttles", "type": "counter", "group": "fast", "unit": "{throttle}", "labels": ["type"], "label_values": {"type": ["core", "package"]}, "capability": "cpu_throttle", "about": "события троттлинга (в т.ч. теплового)"},
+    {"name": "system.memory.limit", "type": "gauge", "group": "fast", "unit": "By", "labels": [], "capability": null, "about": "MemTotal (ёмкость)"},
+    {"name": "system.memory.usage", "type": "gauge", "group": "fast", "unit": "By", "labels": ["state"], "label_values": {"state": ["used", "free", "buffers", "cached"]}, "capability": null},
+    {"name": "system.memory.linux.available", "type": "gauge", "group": "fast", "unit": "By", "labels": [], "capability": null, "about": "MemAvailable"},
+    {"name": "system.memory.linux.pressure", "type": "counter", "group": "fast", "unit": "s", "labels": ["type"], "label_values": {"type": ["some", "full"]}, "capability": "psi", "about": "PSI memory total — накопленное время простоя"},
+    {"name": "system.paging.usage", "type": "gauge", "group": "fast", "unit": "By", "labels": ["state"], "label_values": {"state": ["used", "free"]}, "capability": null, "about": "swap"},
+
+    {"name": "system.network.io", "type": "counter", "group": "fast", "unit": "By", "labels": ["iface", "direction"], "label_values": {"direction": ["receive", "transmit"]}, "capability": null},
+    {"name": "system.network.packets", "type": "counter", "group": "fast", "unit": "{packet}", "labels": ["iface", "direction"], "label_values": {"direction": ["receive", "transmit"]}, "capability": null},
+    {"name": "system.network.errors", "type": "counter", "group": "fast", "unit": "{error}", "labels": ["iface", "direction"], "label_values": {"direction": ["receive", "transmit"]}, "capability": null},
+    {"name": "system.network.dropped", "type": "counter", "group": "fast", "unit": "{packet}", "labels": ["iface", "direction"], "label_values": {"direction": ["receive", "transmit"]}, "capability": null},
+    {"name": "system.network.link.up", "type": "gauge", "group": "fast", "unit": "1", "labels": ["iface"], "capability": null, "about": "operstate up = 1, иначе 0"},
+    {"name": "system.network.carrier_changes", "type": "counter", "group": "fast", "unit": "{change}", "labels": ["iface"], "capability": null},
+    {"name": "system.network.speed", "type": "gauge", "group": "slow", "unit": "bit/s", "labels": ["iface"], "capability": null, "about": "нет ряда, если ядро отдаёт -1 или ошибку"},
+    {"name": "system.network.duplex", "type": "gauge", "group": "slow", "unit": "1", "labels": ["iface"], "capability": null, "values": {"0": "half", "1": "full"}},
+    {"name": "system.network.mtu", "type": "gauge", "group": "slow", "unit": "By", "labels": ["iface"], "capability": null},
+    {"name": "system.network.wifi.signal", "type": "gauge", "group": "fast", "unit": "dBm", "labels": ["iface"], "capability": "wifi", "about": "без SSID/BSSID"},
+    {"name": "system.network.wifi.bitrate", "type": "gauge", "group": "fast", "unit": "bit/s", "labels": ["iface"], "capability": "wifi"},
+    {"name": "system.network.can.state", "type": "gauge", "group": "fast", "unit": "1", "labels": ["iface"], "capability": "can", "values": {"0": "error-active", "1": "error-warning", "2": "error-passive", "3": "bus-off", "4": "stopped", "5": "sleeping"}},
+    {"name": "system.network.can.error_counter", "type": "gauge", "group": "fast", "unit": "{error}", "labels": ["iface", "direction"], "label_values": {"direction": ["receive", "transmit"]}, "capability": "can", "about": "текущие REC/TEC контроллера (IFLA_CAN_BERR_COUNTER)"},
+    {"name": "system.network.can.bus_errors", "type": "counter", "group": "fast", "unit": "{error}", "labels": ["iface"], "capability": "can", "about": "can_device_stats.bus_error"},
+    {"name": "system.network.can.restarts", "type": "counter", "group": "fast", "unit": "{restart}", "labels": ["iface"], "capability": "can", "about": "can_device_stats.restarts"},
+
+    {"name": "system.disk.io", "type": "counter", "group": "fast", "unit": "By", "labels": ["device", "direction"], "label_values": {"direction": ["read", "write"]}, "capability": null},
+    {"name": "system.disk.operations", "type": "counter", "group": "fast", "unit": "{operation}", "labels": ["device", "direction"], "label_values": {"direction": ["read", "write"]}, "capability": null},
+    {"name": "system.disk.io_time", "type": "counter", "group": "fast", "unit": "s", "labels": ["device"], "capability": null, "about": "время занятости устройства (занятость = скорость ряда)"},
+    {"name": "system.filesystem.usage", "type": "gauge", "group": "slow", "unit": "By", "labels": ["mountpoint", "device", "type", "state"], "label_values": {"state": ["used", "free", "reserved"]}, "capability": null},
+    {"name": "system.filesystem.limit", "type": "gauge", "group": "slow", "unit": "By", "labels": ["mountpoint", "device", "type"], "capability": null, "about": "размер ФС (ёмкость)"},
+    {"name": "system.filesystem.inodes.usage", "type": "gauge", "group": "slow", "unit": "{inode}", "labels": ["mountpoint", "device", "type", "state"], "label_values": {"state": ["used", "free"]}, "capability": null},
+    {"name": "system.filesystem.inodes.limit", "type": "gauge", "group": "slow", "unit": "{inode}", "labels": ["mountpoint", "device", "type"], "capability": null},
+    {"name": "system.filesystem.readonly", "type": "gauge", "group": "slow", "unit": "1", "labels": ["mountpoint", "device", "type"], "capability": null, "values": {"0": "rw", "1": "ro"}},
+
+    {"name": "system.thermal.temperature", "type": "gauge", "group": "slow", "unit": "Cel", "labels": ["zone"], "capability": "thermal", "about": "thermal_zone* и hwmon temp*; тепловой троттлинг — system.cpu.throttles"},
+
+    {"name": "system.uptime", "type": "gauge", "group": "slow", "unit": "s", "labels": [], "capability": null},
+    {"name": "system.clock.synced", "type": "gauge", "group": "slow", "unit": "1", "labels": [], "capability": "clock", "values": {"0": "не синхронизированы", "1": "синхронизированы"}},
+    {"name": "system.clock.offset", "type": "gauge", "group": "slow", "unit": "s", "labels": [], "capability": "clock", "about": "только при synced"},
+    {"name": "system.systemd.units.failed", "type": "gauge", "group": "slow", "unit": "{unit}", "labels": [], "capability": "systemd", "about": "число; список — поле пачки failed_units"},
+    {"name": "system.reboot_required", "type": "gauge", "group": "slow", "unit": "1", "labels": [], "capability": null, "values": {"0": "нет", "1": "нужна перезагрузка"}},
+    {"name": "stvor.portal.rtt", "type": "gauge", "group": "slow", "unit": "s", "labels": [], "capability": null, "about": "время ответа портала на предыдущую успешную пачку"}
+  ],
+  "capabilities": ["psi", "cpufreq", "cpu_throttle", "clock", "systemd", "thermal", "can", "wifi", "per_core"],
+  "batch": {
+    "endpoint": "metrics",
+    "fields": {
+      "schema": {"type": "int", "about": "1"},
+      "agent_version": {"type": "string", "max": 64},
+      "capabilities": {"type": "string[]", "max": 32, "about": "значения из capabilities; неизвестные игнорируются"},
+      "batch_id": {"type": "ulid", "about": "crypto/rand; повтор отправки — тот же batch_id"},
+      "stream": {"type": "ulid", "about": "поток буфера (создаётся с буфером), R5"},
+      "seq": {"type": "int", "about": "строго растёт в потоке; seq ≤ last_seq — 200 duplicate"},
+      "boot_id": {"type": "string", "pattern": "^[0-9a-f-]{36}$", "about": "/proc/sys/kernel/random/boot_id"},
+      "machine_id_hash": {"type": "sha256", "about": "sha256(/etc/machine-id) — детектор клонов"},
+      "sent_at": {"type": "rfc3339", "about": "часы устройства на момент ЭТОЙ попытки отправки"},
+      "sent_mono_ms": {"type": "int", "about": "CLOCK_BOOTTIME (мс) на момент этой попытки"},
+      "started_at": {"type": "rfc3339", "about": "часы устройства в момент первой точки пачки"},
+      "start_mono_ms": {"type": "int", "about": "CLOCK_BOOTTIME (мс) первой точки; время точки = start_mono_ms + offset_ms"},
+      "clock_synced": {"type": "bool", "about": "часы синхронизированы на момент сбора первой точки"},
+      "backfill": {"type": "bool?", "about": "пачка из хвоста буфера (не свежие данные): по ней снимок не обновляется и тревоги не поднимаются"},
+      "failed_units": {"type": "string[]?", "max": 32, "about": "имена упавших юнитов (≤ 128 знаков) — в снимок"},
+      "buffer": {"type": "object?", "fields": {"used_bytes": "int", "quota_bytes": "int", "oldest_at": "rfc3339?", "autonomous_since": "rfc3339?"}},
+      "series": {"type": "series[]", "max": 2000}
+    },
+    "series": {
+      "name": {"type": "string", "about": "из белого списка metrics; иначе ряд отброшен со счётчиком"},
+      "labels": {"type": "object", "about": "ключи — только из labels.free/labels.enum и labels метрики; значения — string"},
+      "rollup_s": {"type": "int?", "values": [0, 60, 300], "about": "0 или нет — сырые точки; 60/300 — свёрнутые окна"},
+      "points": {"type": "point[]", "about": "сырая точка — [offset_ms, value]; свёрнутая gauge — [offset_ms, {\"min\":n,\"avg\":n,\"max\":n}]; свёрнутый counter — [offset_ms, last_value]"}
+    },
+    "point_rules": [
+      "offset_ms ≥ 0, монотонно не убывает внутри ряда",
+      "counter — сырое накопительное значение ≥ 0 (скорость считает сервер); NaN/Inf/отрицательные — отброшены",
+      "свёрнутая точка gauge: min ≤ avg ≤ max",
+      "точки старше point_max_age_days отброшены со счётчиком (R9)"
+    ]
+  },
+  "inventory": {
+    "endpoint": "inventory",
+    "flow": "PUT {schema, hash} → 200 match | 409 need_body; PUT {schema, hash, body} → 200 (новая версия, закрытие прежней; тот же хэш — match, адреса открытой версии обновляются). hash = sha256 канонического JSON body БЕЗ поля collected_at и без адресов интерфейсов nics[].ipv4, nics[].ipv6 (ключи по алфавиту, без пробелов, массивы в порядке, заданном агентом); портал проверяет хэш тем же правилом",
+    "fields": {
+      "schema": {"type": "int"},
+      "hash": {"type": "sha256"},
+      "body": {"type": "object?"},
+      "machine_id_hash": {"type": "sha256?", "about": "идентичность отправителя — как в пачке метрик; три поля передаются вместе или ни одного (часть — 400 telemetry.invalid); проверяются детектором клонов (machine-id и правило аптайма), отказ — 409 clone_rejected"},
+      "boot_id": {"type": "string?", "pattern": "^[0-9a-f-]{36}$", "about": "текущая загрузка отправителя"},
+      "sent_mono_ms": {"type": "int?", "about": "CLOCK_BOOTTIME (мс) отправителя на момент этой попытки"}
+    },
+    "body": {
+      "collected_at": "rfc3339",
+      "system": {"arch": "string", "hostname_hash": "sha256?"},
+      "board": {"vendor": "string?", "product": "string?", "version": "string?", "board_vendor": "string?", "board_name": "string?", "serial_hash": "sha256?", "dt_model": "string?", "dt_compatible": "string[]?"},
+      "vm": {"is_vm": "bool", "hypervisor": "string?", "platform": "string?"},
+      "os": {"id": "string", "version_id": "string?", "pretty_name": "string?", "kernel": "string", "l4t": "string?"},
+      "cpu": {"vendor": "string?", "model": "string", "cores": "int?", "threads": "int", "sockets": "int?"},
+      "memory": {"total_bytes": "int", "swap_bytes": "int?"},
+      "bios": {"vendor": "string?", "version": "string?", "date": "string?", "uefi": "bool"},
+      "secure_boot": {"state": "enum: enabled | disabled | unsupported | unknown"},
+      "disks": {"max": 64, "item": {"name": "string", "model": "string?", "type": "enum: nvme | ssd | hdd | emmc | sd | usb | virtual | other", "size_bytes": "int", "removable": "bool", "serial_hash": "sha256?", "partitions": {"max": 128, "item": {"name": "string", "size_bytes": "int", "fstype": "string?", "mountpoints": "string[]", "is_root": "bool", "is_efi": "bool"}}}},
+      "nics": {"max": 64, "item": {"name": "string", "type": "enum: ethernet | wifi | wwan | can | other", "driver": "string?", "mac": "string?", "ipv4": "string[]", "ipv6": "string[]", "service": "bool"}},
+      "usb": {"max": 256, "tree": true, "item": {"path": "string", "vid": "string (4 hex)", "pid": "string (4 hex)", "manufacturer": "string?", "product": "string?", "speed_mbps": "number?", "class": "string? (2 hex)", "serial_hash": "sha256?", "driver": "string?", "children": "usb[]"}},
+      "pci": {"max": 256, "tree": true, "item": {"address": "string (dddd:bb:dd.f)", "vendor_id": "string (4 hex)", "device_id": "string (4 hex)", "class": "string (6 hex)", "vendor": "string?", "device": "string?", "driver": "string?", "children": "pci[]"}},
+      "gpus": {"max": 16, "item": {"pci_address": "string?", "vendor": "string?", "model": "string", "driver": "string?", "driver_version": "string?"}},
+      "cameras": {"max": 32, "item": {"device": "string (video<N>)", "name": "string", "usb_path": "string?"}}
+    },
+    "never": ["серийные номера в открытом виде", "SSID/BSSID", "имена пользователей", "командные строки и окружение процессов"],
+    "change_kinds": ["memory", "disk", "nic", "usb", "pci", "gpu", "os", "cpu", "board"]
+  },
+  "events": {
+    "endpoint": "events",
+    "fields": {
+      "schema": {"type": "int"},
+      "events": {"type": "event[]", "max": 500},
+      "machine_id_hash": {"type": "sha256?", "about": "идентичность отправителя — как в пачке метрик; три поля передаются вместе или ни одного (часть — 400 telemetry.invalid); проверяются детектором клонов (machine-id и правило аптайма), отказ — 409 clone_rejected"},
+      "boot_id": {"type": "string?", "pattern": "^[0-9a-f-]{36}$", "about": "текущая загрузка отправителя"},
+      "sent_mono_ms": {"type": "int?", "about": "CLOCK_BOOTTIME (мс) отправителя на момент этой попытки"}
+    },
+    "event": {
+      "event_id": {"type": "ulid", "about": "идемпотентность (robot_id, event_id)"},
+      "at": {"type": "rfc3339", "about": "часы устройства; без синхронизации выравнивается по якорю загрузки; позже приёма или старше point_max_age_days — заменяется временем приёма"},
+      "mono_ms": {"type": "int", "about": "CLOCK_BOOTTIME (мс)"},
+      "boot_id": {"type": "string"},
+      "clock_synced": {"type": "bool"},
+      "kind": {"type": "enum: events.kinds"},
+      "severity": {"type": "enum: info | warning | danger"},
+      "params": {"type": "object", "max_bytes": 2048, "about": "только ключи из kinds[].params; значения — string | number | bool"}
+    },
+    "kinds": {
+      "thermal.overheat": {"severity": "danger", "params": ["zone", "value_c", "threshold_c"]},
+      "thermal.throttling": {"severity": "warning", "params": ["type", "count"]},
+      "disk.threshold": {"severity": "warning", "params": ["mountpoint", "used_pct", "threshold_pct"]},
+      "unit.failed": {"severity": "warning", "params": ["unit"]},
+      "unit.recovered": {"severity": "info", "params": ["unit"]},
+      "usb.removed": {"severity": "warning", "params": ["vid", "pid", "product", "serial_hash", "path"]},
+      "usb.added": {"severity": "info", "params": ["vid", "pid", "product", "serial_hash", "path"]},
+      "hardware.changed": {"severity": "info", "params": ["kind", "subject", "before", "after"]},
+      "system.boot": {"severity": "info", "params": ["boot_id", "previous_boot_id", "uptime_s"]},
+      "clock.skew": {"severity": "warning", "params": ["offset_s", "synced"]},
+      "autonomy.summary": {"severity": "info", "params": ["since", "until", "points", "rolled_up", "dropped"]},
+      "buffer.quarantine": {"severity": "warning", "params": ["segment", "reason"]},
+      "portal.clone_rejected": {"severity": "danger", "params": ["until"]}
+    }
+  },
+  "config": {
+    "about": "Тело ответа 200/202 на metrics/inventory/events. Агент применяет только значения в ranges (копия контракта зашита в агенте); вне диапазона — игнор и запись в журнал. Канал не запускает команд, не читает произвольных путей и не меняет источники сбора.",
+    "fields": {
+      "status": {"type": "enum: accepted | duplicate | match"},
+      "config_hash": {"type": "sha256"},
+      "metrics": {"type": "string[]", "about": "включённые имена — подмножество белого списка"},
+      "fast_interval_s": {"type": "int"},
+      "slow_interval_s": {"type": "int"},
+      "inventory_check_s": {"type": "int"},
+      "per_core": {"type": "bool"},
+      "buffer_quota_mib": {"type": "int"},
+      "autonomy_days": {"type": "int"},
+      "detail_until": {"type": "rfc3339?", "about": "режим «Детально»: быстрые ряды раз в detail_sample_s, отправка раз в detail_send_s"},
+      "next_after_ms": {"type": "int?", "about": "темп выгрузки хвоста буфера"},
+      "dropped": {"type": "object?", "about": "счётчики отброшенного сервером: series, labels, points_old, points_invalid"}
+    },
+    "defaults": {
+      "fast_interval_s": 10,
+      "slow_interval_s": 60,
+      "inventory_check_s": 60,
+      "per_core": false,
+      "buffer_quota_mib": 256,
+      "autonomy_days": 30,
+      "detail_sample_s": 5,
+      "detail_send_s": 10
+    },
+    "ranges": {
+      "fast_interval_s": [5, 300],
+      "slow_interval_s": [5, 300],
+      "inventory_check_s": [5, 300],
+      "buffer_quota_mib": [32, 1024],
+      "autonomy_days": [1, 30],
+      "detail_max_s": 900,
+      "next_after_ms": [0, 600000]
+    }
+  }
+}

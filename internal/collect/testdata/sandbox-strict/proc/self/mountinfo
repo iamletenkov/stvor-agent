@@ -1,0 +1,15 @@
+612 535 259:2 / / ro,relatime master:1 - ext4 /dev/nvme0n1p2 rw,errors=remount-ro
+613 612 0:21 / /sys ro,nosuid,nodev,noexec,relatime master:7 - sysfs sysfs rw
+614 612 0:22 / /proc rw,nosuid,nodev,noexec,relatime master:12 - proc proc rw
+615 612 0:5 / /dev ro,nosuid,relatime master:2 - devtmpfs udev rw,size=3982144k,nr_inodes=995536,mode=755,inode64
+616 612 0:24 / /run ro,nosuid,nodev,noexec,relatime master:5 - tmpfs tmpfs rw,size=799908k,mode=755,inode64
+617 612 259:1 / /boot/efi ro,relatime master:31 - vfat /dev/nvme0n1p1 rw,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=mixed,utf8,errors=remount-ro
+618 612 253:0 / /home ro,relatime master:33 - ext4 /dev/mapper/vg0-home rw
+619 612 259:2 /tmp/systemd-private-5b0f7f1e3c8a4f0b-stvor-agent.service-Jk3Lm2/tmp /tmp rw,relatime - ext4 /dev/nvme0n1p2 rw,errors=remount-ro
+620 612 259:2 /var/tmp/systemd-private-5b0f7f1e3c8a4f0b-stvor-agent.service-Qw8Er4/tmp /var/tmp rw,relatime - ext4 /dev/nvme0n1p2 rw,errors=remount-ro
+621 612 259:2 /var/lib/stvor-agent /var/lib/stvor-agent rw,relatime master:1 - ext4 /dev/nvme0n1p2 rw,errors=remount-ro
+622 618 8:33 / /media/alice/CAMERA ro,nosuid,nodev,relatime master:69 - exfat /dev/sdc1 rw,fmask=0022,dmask=0022,iocharset=utf8,errors=remount-ro
+623 618 8:49 / /home/bob/data ro,relatime master:70 - ext4 /dev/sdd1 rw
+624 612 8:65 / /run/media/carol/BACKUP ro,nosuid,nodev,relatime master:71 - ext4 /dev/sde1 ro
+625 612 8:81 / /media/dave/CAMERA ro,nosuid,nodev,relatime master:72 - exfat /dev/sdf1 rw
+626 612 0:60 / /media/usbkey ro,nosuid,nodev,relatime master:73 - fuseblk /dev/sdg1 rw,user_id=0,group_id=0,allow_other,blksize=4096
