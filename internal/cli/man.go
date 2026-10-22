@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/iamletenkov/stvor-agent/internal/daemon"
+	"github.com/iamletenkov/stvor-agent/internal/platform"
 	"github.com/iamletenkov/stvor-agent/internal/reconcile"
 	"github.com/iamletenkov/stvor-agent/internal/state"
 	"github.com/iamletenkov/stvor-agent/internal/token"
@@ -75,6 +76,10 @@ polls the robot API of the portal and keeps the managed Teleport labels
 \fBteleport\fR extension of \fBcream\fR(1). The unit starts only after
 \fBstvor\-agent enable\fR has stored a token.
 .PP
+On OpenWrt (\fBID\fR or \fBID_LIKE\fR openwrt or lede in \fI/etc/os\-release\fR) the
+services are procd init scripts instead of systemd units, the extension is
+\fBteleport\-openwrt\fR and the state lives under \fI/opt\fR (see FILES).
+.PP
 Arguments are KEY=VALUE pairs; a repeated or unknown key is a usage error.
 `)
 	b.WriteString(".SH COMMANDS\n")
@@ -105,7 +110,7 @@ Usage error: unknown command, flag or key, missing argument.
 `, exitOK, exitError, exitUsage)
 	fmt.Fprintf(&b, `.SH ENVIRONMENT
 Read by the service from \fI/etc/cream/stvor\-agent/config\fR (EnvironmentFile of the unit, managed by
-\fBcream set stvor\-agent\fR). Invalid values fall back to the default with a journal line.
+\fBcream set stvor\-agent\fR; on OpenWrt the init scripts read \fI/etc/cream/stvor\-agent\-openwrt/config\fR). Invalid values fall back to the default with a journal line.
 .TP
 .B %s
 Poll interval in seconds, %d\(en%d, default %d.
@@ -136,8 +141,44 @@ Telemetry token (url=, token=), mode 0640 root:stvor\-telemetry; written by \fBr
 .TP
 .I %s
 Telemetry buffer and the token\-rejected marker (owner stvor\-telemetry).
+.TP
+.I %s
+Telemetry status for \fBstatus\fR (tmpfs).
 `, roffEscape(token.DefaultPath), roffEscape(state.DefaultPath), roffEscape(daemon.DefaultLockPath), roffEscape(Unit),
-		roffEscape(reconcile.TelemetryTokenPath), roffEscape(TelemetryStateDir))
+		roffEscape(reconcile.TelemetryTokenPath), roffEscape(TelemetryStateDir), roffEscape(TelemetryRunDir))
+	owrt := platform.OpenWrt.Layout()
+	fmt.Fprintf(&b, `.SS OpenWrt
+\fI/var\fR is tmpfs there; the token files, the lock and \fI%s\fR are as above.
+.TP
+.I %s
+State (instead of \fI%s\fR); the directory is 0750 root:stvor\-telemetry.
+.TP
+.I %s
+Telemetry buffer and markers (instead of \fI%s\fR).
+.TP
+.I %s
+Machine id of the agent (OpenWrt has no \fI/etc/machine\-id\fR): 128 random bits made by
+\fBrun\fR at the first start, mode 0640 root:stvor\-telemetry, never rewritten.
+.TP
+.I /etc/init.d/stvor\-agent
+procd init script of the service (USE_PROCD=1, START=99, root, no_new_privs): \fBenable\fR,
+\fBdisable\fR, \fBrestart\fR, \fBrunning\fR. Starts only when the token file exists; output
+goes to \fBlogread\fR(8).
+.TP
+.I /etc/init.d/stvor\-agent\-telemetry
+procd init script of the telemetry service: user stvor\-telemetry (made by the script when
+missing), no_new_privs, GOMEMLIMIT; starts only when the telemetry token exists.
+.TP
+.I /etc/cream/%s/config
+Service settings (see ENVIRONMENT), managed by \fBcream set %s\fR; only the two keys
+with a plain value are read, the file is never executed.
+.TP
+.B %s
+The cream extension the labels are applied with (instead of \fBteleport\fR).
+`, roffEscape(TelemetryRunDir), roffEscape(owrt.StatePath), roffEscape(state.DefaultPath),
+		roffEscape(owrt.TelemetryStateDir), roffEscape(TelemetryStateDir), roffEscape(owrt.MachineIDPath),
+		roffEscape(openwrtAgentExtension), roffEscape(openwrtAgentExtension),
+		roffEscape(owrt.TeleportExtension))
 	b.WriteString(`.SH EXAMPLES
 Enable the agent with a token from the portal:
 .PP
@@ -155,12 +196,17 @@ stvor\-agent status \-\-json
 .RE
 .fi
 .SH SEE ALSO
-\fBcream\fR(1), \fBsystemctl\fR(1), \fBjournalctl\fR(1)
+\fBcream\fR(1), \fBsystemctl\fR(1), \fBjournalctl\fR(1), \fBlogread\fR(8)
 .PP
 https://github.com/iamletenkov/stvor\-agent
 `)
 	return b.String()
 }
+
+// openwrtAgentExtension is the cream extension that installs the agent on
+// OpenWrt (cream-extensions openwrt/stvor-agent-openwrt): its settings domain
+// is read by the procd scripts.
+const openwrtAgentExtension = "stvor-agent-openwrt"
 
 // roffEscape makes s safe as roff text: backslashes and hyphens escaped.
 func roffEscape(s string) string {

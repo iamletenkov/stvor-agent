@@ -61,6 +61,37 @@ stdin — `/dev/null`, в своей группе процессов; вывод
 
 Секрет регистрации Teleport агент не видит никогда: он идёт только в `cream run teleport join` со stdin.
 
+### Сетевые обращения
+
+Агент только клиент: портов не открывает, входящих соединений не ждёт. Все обращения — HTTPS (TLS ≥ 1.2,
+системные корни, без редиректов) к порталу из `url=` файла токена:
+
+| Кто | Запрос | Чем представляется |
+|---|---|---|
+| `stvor-agent run` (root) | `GET /robot-api/v1/labels` — раз в интервал (по умолчанию 60 с) и по `SIGHUP` | токен меток |
+| `stvor-agent run` (root) | `POST /robot-api/v1/telemetry-token` — когда токена телеметрии нет или его отвергли | токен меток |
+| `stvor-agent telemetry` (`stvor-telemetry`) | `POST /robot-api/v1/metrics`, `POST /robot-api/v1/events`, `PUT /robot-api/v1/inventory` | токен телеметрии |
+
+Других адресов нет: ни обновлений, ни DNS-запросов сверх имени портала, ни обращений к Teleport (с ним говорит
+расширение `teleport`). Ответ портала на телеметрию может менять только интервалы, набор метрик и пределы буфера —
+в границах, зашитых в бинарь.
+
+### Куда пишет
+
+| Что | Debian/Ubuntu | OpenWrt | Кто пишет |
+|---|---|---|---|
+| токен меток | `/etc/stvor-agent/token` (0600 root, каталог 0700) | так же | `enable` |
+| `state.json`, сумма источника токена телеметрии | `/var/lib/stvor-agent/` (0700) | `/opt/stvor-agent/` (0750 `root:stvor-telemetry`) | служба `run` |
+| machine-id агента | — (`/etc/machine-id` системы) | `/opt/stvor-agent/machine-id` (0640 `root:stvor-telemetry`) | `run`, один раз |
+| токен телеметрии | `/etc/stvor-agent-telemetry/token` (0640 `root:stvor-telemetry`, каталог 0750) | так же | служба `run` |
+| буфер и отметки телеметрии | `/var/lib/stvor-agent-telemetry/` (0700) | `/opt/stvor-agent/telemetry/` (0700) | служба `telemetry` (`stvor-telemetry`) |
+| статус телеметрии | `/run/stvor-agent-telemetry/status.json` | так же (`/run` → `/var/run`, tmpfs) | служба `telemetry` |
+| блокировка | `/run/stvor-agent.lock` | так же | `run` и команды |
+
+Остальное на машине меняют дочерние `cream run teleport…` (`/etc/cream/teleport*`, `/etc/teleport.yaml`, перезапуск
+Teleport) — в пределах двух ключей `env` и `space`. На OpenWrt procd-скрипты агента ещё создают пользователя и группу
+`stvor-telemetry` (`user_add`/`group_add_next` из `/lib/functions.sh`), если установщик их не завёл.
+
 ### Hardening юнита
 
 `NoNewPrivileges=yes`, `PrivateTmp=yes`, `ProtectHome=yes`, `ProtectKernelTunables=yes`,
@@ -77,13 +108,36 @@ stdin — `/dev/null`, в своей группе процессов; вывод
 
 Агент не открывает портов (ни метрик, ни API): с людьми он общается только CLI и журналом.
 
+Служба телеметрии (`stvor-agent-telemetry.service`) — не root: пользователь `stvor-telemetry`, без capabilities,
+`ProtectSystem=strict` (пишет только свой `StateDirectory`/`RuntimeDirectory`), `MemoryMax=64M`, `CPUQuota=10%`;
+`telemetry` от root не запускается вовсе. Строки сверяет `packaging/unit_test.go`.
+
+### OpenWrt: песочницы юнита нет
+
+На OpenWrt службы — procd-скрипты из `tar.gz` (`/etc/init.d/stvor-agent`, `/etc/init.d/stvor-agent-telemetry`), а у
+procd нет аналогов `ProtectSystem=`, `PrivateTmp=`, `RestrictAddressFamilies=`, `MemoryMax=` и прочих ограничений
+юнита. Что остаётся:
+
+- `stvor-agent` — **root без ограничений**, кроме `no_new_privs` (setuid-бинари не повышают права детей). Поверхность
+  та же, что на Debian: ответ портала ≤ 4096 байт, разобранный строго, и два ключа в `teleport-openwrt`;
+- телеметрия — под `stvor-telemetry` (`procd_set_param user/group`), `no_new_privs`, `GOMEMLIMIT=40MiB`; жёсткого
+  предела памяти и CPU нет;
+- файл настроек `/etc/cream/stvor-agent-openwrt/config` скрипты не исполняют: берут из него только
+  `STVOR_AGENT_INTERVAL` и `STVOR_AGENT_LOG_LEVEL` с простым значением;
+- токены не кладутся в `/lib/upgrade/keep.d`: после `sysupgrade` их выдаёт заново команда портала.
+
+Компрометация бинаря или ответа портала с обходом разбора на OpenWrt даёт root на роутере без тех рамок, что на
+Debian ставит systemd.
+
 ### Цепочка поставки
 
 - Только стандартная библиотека Go; `make vuln` — govulncheck по модулю.
 - Воспроизводимая сборка: `CGO_ENABLED=0 -trimpath -buildid=`, nfpm по пину, `SOURCE_DATE_EPOCH`;
   `make repro-check` в `make ci` — две сборки с пустыми кешами дают равные sha256 `.deb`.
-- Релиз несёт `SHA256SUMS`; обёртка каталога cream-extensions и зеркало портала ставят пакет по пину
-  версии и суммы архитектуры, сверка `sha256` — до `dpkg -i`. Подписи релизов пока нет.
+- Релиз несёт `SHA256SUMS` — общий для `.deb` и `tar.gz` OpenWrt (`stvor-agent_<v>_linux_<arch>.tar.gz`: ustar,
+  владелец 0:0, `mtime` = время коммита, `gzip -n`; `repro-check` сверяет и их); обёртки каталога cream-extensions
+  и зеркало портала ставят пакет по пину версии и суммы архитектуры, сверка `sha256` — до установки. Подписи
+  релизов пока нет.
 
 ## 3.1.1: версия кластера в арифметике bash
 

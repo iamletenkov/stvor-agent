@@ -7,7 +7,8 @@
 GO_IMAGE       ?= golang:1.26.10
 GOLANGCI_IMAGE ?= golangci/golangci-lint:v2.14.0
 NFPM_IMAGE     ?= goreleaser/nfpm:v2.47.0
-DEBIAN_IMAGE   ?= debian:13
+# По digest: tar и gzip этого образа дают байты tar.gz выпуска (пересборка тега — те же суммы).
+DEBIAN_IMAGE   ?= debian:13@sha256:913f6706df59a68922d1dd08f78c2476560a8d367897200a6005b00e5f67c2d5
 SHELLCHECK_IMAGE ?= koalaman/shellcheck:v0.11.0
 ACTIONLINT_IMAGE ?= rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
 GOVULNCHECK    ?= golang.org/x/vuln/cmd/govulncheck@v1.8.0
@@ -36,7 +37,9 @@ HEAVY_LOCK     ?= /tmp/cream-heavy.lock
 HEAVY           = $(if $(STVOR_AGENT_HEAVY_HELD),,flock $(HEAVY_LOCK) env STVOR_AGENT_HEAVY_HELD=1)
 # Сопровождающие скрипты пакета и инструменты упаковки — под shellcheck в make lint.
 SH_FILES       := packaging/postinst packaging/prerm packaging/postrm \
-	tools/check-deb.sh tools/check-deb-live.sh tools/repro-check.sh \
+	tools/check-deb.sh tools/check-deb-live.sh tools/repro-check.sh tools/tarball.sh tools/check-release-assets.sh \
+	packaging/openwrt/stvor-agent packaging/openwrt/stvor-agent-telemetry \
+	test/openwrt/run.sh test/openwrt/scenario.sh test/openwrt/cream \
 	tools/check-test-map.sh tools/check-contract-fixtures.sh tools/check-telemetry-contract.sh tools/collect-fixture.sh \
 	test/integration/cream-deb.sh test/integration/run.sh test/integration/inside.sh \
 	test/e2e/run.sh test/e2e/inside.sh test/e2e/teleport-fake/teleport
@@ -57,7 +60,7 @@ GO = $(DOCKER_RUN) $(GO_IMAGE)
 GO_FILES = find . \( -path ./.cache -o -path ./dist -o -path ./.scratchpad -o -path ./.git \) -prune -o -name '*.go' -print
 
 .DEFAULT_GOAL := help
-.PHONY: help cache build build-all test test-integration e2e e2e-unlocked lint actionlint contract-fixtures telemetry-contract fmt man deb \
+.PHONY: help cache build build-all test test-integration e2e e2e-unlocked e2e-openwrt e2e-openwrt-unlocked tarball lint actionlint contract-fixtures telemetry-contract fmt man deb \
 	deb-unlocked repro-check vuln ci ci-unlocked clean
 
 help: ## список целей
@@ -116,6 +119,24 @@ e2e-unlocked: cache
 	test/e2e/run.sh "$$deb" .cache/e2e/stvor-agent_$(E2E_VERSION)_amd64.deb $(E2E_VERSION) \
 		.cache/e2e/fakeportal .scratchpad/test-runs/e2e-$$(date +%Y%m%d-%H%M%S)
 
+# Сквозной тест на OpenWrt (спека OpenWrt §4.3): корневая ФС OpenWrt 25.12 x86-64 из
+# релиза openwrt-builder v0.3.1 (как make test-openwrt cream; кеш .cache/openwrt, сумма
+# закреплена) в docker, внутри — busybox sh: установка из tar.gz выпуска, procd-скрипты
+# через rc.common с поддельным ubus, поддельный cream (teleport-openwrt), fakeportal.
+# Лог — .scratchpad/test-runs/e2e-openwrt-<время>/. В ci не входит — отдельный job CI.
+OPENWRT_ROOTFS_URL    ?= https://github.com/iamletenkov/openwrt-builder/releases/download/v0.3.1/openwrt-25.12.6-custom-x86-64-generic-rootfs.tar.gz
+OPENWRT_ROOTFS_SHA256 ?= ece09113fd478d37bdb99b74452026eb942007b796dbedcf9e45b87a2e9ac4a9
+e2e-openwrt: ## сквозной тест на корневой ФС OpenWrt 25.12 в контейнере: tar.gz, procd-скрипты, телеметрия (под замком)
+	$(HEAVY) $(MAKE) --no-print-directory e2e-openwrt-unlocked
+
+e2e-openwrt-unlocked: cache
+	$(MAKE) --no-print-directory tarball VERSION=$(E2E_VERSION) ARCH=amd64 ARCHES=amd64 RELEASE_DIR=.cache/e2e-openwrt
+	$(GO) env CGO_ENABLED=0 go build -trimpath -o .cache/e2e-openwrt/fakeportal ./test/e2e/fakeportal
+	$(GO) env CGO_ENABLED=0 go build -trimpath -o .cache/e2e-openwrt/fakeubus ./test/openwrt/fakeubus
+	OPENWRT_ROOTFS_URL=$(OPENWRT_ROOTFS_URL) OPENWRT_ROOTFS_SHA256=$(OPENWRT_ROOTFS_SHA256) \
+		test/openwrt/run.sh .cache/e2e-openwrt/stvor-agent_$(E2E_VERSION)_linux_amd64.tar.gz $(E2E_VERSION) \
+		.cache/e2e-openwrt .scratchpad/test-runs/e2e-openwrt-$$(date +%Y%m%d-%H%M%S)
+
 fmt: cache ## gofmt -w по всему модулю
 	$(GO) sh -c "$(GO_FILES) | xargs -r gofmt -w"
 
@@ -145,16 +166,25 @@ contract-fixtures: ## сверка файлов-образцов контрак�
 telemetry-contract: ## сверка копии контракта телеметрии с пином tools/telemetry-contract.sha256
 	tools/check-telemetry-contract.sh
 
+# Поставка для OpenWrt (спека OpenWrt §4.3): $(RELEASE_DIR)/stvor-agent_<v>_linux_<arch>.tar.gz —
+# статический бинарь, procd-скрипты packaging/openwrt/, man, LICENSE, NOTICE (tools/tarball.sh в
+# debian: ustar, владелец 0:0, mtime SOURCE_DATE_EPOCH, gzip -n — воспроизводимо). Суммы
+# пишет deb вместе с .deb в один SHA256SUMS.
+tarball: build-all ## dist/stvor-agent_<v>_linux_<arch>.tar.gz для OpenWrt (ARCH=amd64|arm64, по умолчанию оба)
+	@mkdir -p $(RELEASE_DIR)
+	$(GO) go run ./tools/genman -out $(RELEASE_DIR)/man -version $(DEB_VERSION)
+	@set -e; for a in $(DEB_ARCHES); do \
+		$(DOCKER_RUN) $(DEBIAN_IMAGE) sh tools/tarball.sh $(DEB_VERSION) $$a $(RELEASE_DIR) $(RELEASE_DIR)/man; \
+	done
+
 # Оба .deb (или один — ARCH=amd64|arm64) из готовых dist/stvor-agent-linux-* и
 # man-страницы $(RELEASE_DIR)/man/stvor-agent.8.gz (tools/genman): nfpm,
 # затем в debian — состав и поля (tools/check-deb.sh) и живые dpkg -i/-r/--purge
 # от root (tools/check-deb-live.sh, корень репозитория — только чтение).
-deb: ## dist/stvor-agent_<v>_<arch>.deb (ARCH=amd64|arm64, по умолчанию оба) и SHA256SUMS (под замком)
+deb: ## dist/stvor-agent_<v>_<arch>.deb и stvor-agent_<v>_linux_<arch>.tar.gz (ARCH=amd64|arm64, по умолчанию оба) и SHA256SUMS (под замком)
 	$(HEAVY) $(MAKE) --no-print-directory deb-unlocked
 
-deb-unlocked: build-all
-	@mkdir -p $(RELEASE_DIR)
-	$(GO) go run ./tools/genman -out $(RELEASE_DIR)/man -version $(DEB_VERSION)
+deb-unlocked: tarball
 	@set -e; for a in $(DEB_ARCHES); do \
 		echo "== nfpm stvor-agent_$(DEB_VERSION)_$$a.deb"; \
 		$(DOCKER_RUN) -e ARCH=$$a -e DEB_VERSION=$(DEB_VERSION) -e MAN_DIR=$(RELEASE_DIR)/man $(NFPM_IMAGE) \
@@ -165,10 +195,11 @@ deb-unlocked: build-all
 				sh tools/check-deb-live.sh $(DEB_VERSION) $$a $(RELEASE_DIR); \
 		fi; \
 	done
-	cd $(RELEASE_DIR) && sha256sum -- $(foreach a,$(DEB_ARCHES),stvor-agent_$(DEB_VERSION)_$(a).deb) > SHA256SUMS
+	cd $(RELEASE_DIR) && sha256sum -- $(foreach a,$(DEB_ARCHES),stvor-agent_$(DEB_VERSION)_$(a).deb) \
+		$(foreach a,$(DEB_ARCHES),stvor-agent_$(DEB_VERSION)_linux_$(a).tar.gz) > SHA256SUMS
 	@cat $(RELEASE_DIR)/SHA256SUMS
 
-repro-check: ## две сборки обоих .deb с одним SOURCE_DATE_EPOCH и пустыми кешами — sha256 совпадают (под замком)
+repro-check: ## две сборки обоих .deb и tar.gz с одним SOURCE_DATE_EPOCH и пустыми кешами — sha256 совпадают (под замком)
 	$(HEAVY) env MAKE="$(MAKE)" sh tools/repro-check.sh
 
 # go run …@версия собирает govulncheck вне модуля: go.mod/go.sum не меняются,
@@ -181,10 +212,11 @@ vuln: cache ## govulncheck по модулю (версия закреплена 
 	$(DOCKER_RUN) -e GOMODCACHE=/cache/vuln-mod -e GOFLAGS="-buildvcs=false -mod=mod" \
 		$(GO_IMAGE) go run $(GOVULNCHECK) ./...
 
-ci: ## всё, что гоняет CI: lint, test, build-all, deb, repro-check (под замком)
+ci: ## всё, что гоняет CI: lint, test, build-all, deb, repro-check, check-release-assets (под замком)
 	$(HEAVY) $(MAKE) --no-print-directory ci-unlocked
 
 ci-unlocked: lint test deb-unlocked repro-check
+	sh tools/check-release-assets.sh $(DEB_VERSION) $(RELEASE_DIR)
 
 clean: ## удалить dist/ (кэш .cache/ сохраняется)
 	rm -rf dist

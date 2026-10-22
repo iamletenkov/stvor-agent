@@ -32,14 +32,15 @@ internal/teleport/ — адаптер `cream run teleport …`, разбор JSO
 internal/token/, internal/state/, internal/atomicfile/ — файл токена, state.json, атомарная запись и чтение без ссылок
 internal/platform/ — семейство по os-release (Debian/OpenWrt): пути, имя расширения teleport
 internal/initsys/  — init-система: systemctl или procd; internal/version/ — версия из ldflags
-packaging/         — юнит stvor-agent.service (+ unit_test.go), nfpm.yaml, postinst/prerm/postrm, copyright
+packaging/         — юниты systemd (+ unit_test.go), nfpm.yaml, postinst/prerm/postrm, copyright; openwrt/ — procd-скрипты для tar.gz (+ procd_test.go)
 test/integration/  — адаптер против настоящего cream в debian:12 (`make test-integration`)
 test/e2e/          — сквозной тест в debian:12 с systemd: cream, каталог по пину, fakeportal (`make e2e`)
+test/openwrt/      — сквозной тест на корневой ФС OpenWrt: tar.gz, procd-скрипты, поддельные ubus и cream (`make e2e-openwrt`)
 test/bench/telemetry/ — цикл `telemetry` с файлами в одном каталоге: замер бюджета на живой машине без пакета
-tools/             — check-test-map, check-contract-fixtures (+ пин contract-fixtures.sha256), check-deb, check-deb-live, repro-check
+tools/             — check-test-map, check-contract-fixtures (+ пин contract-fixtures.sha256), check-deb, check-deb-live, repro-check, tarball (tar.gz для OpenWrt), check-release-assets
 docs/              — README.md (индекс), getting-started.md, guides/ (по задачам), reference/ (CLI, настройки, контракт портала), architecture.md, development.md, runbooks/ (выпуск), test-map.md, history/, adr/, specs/, plans/, research/, STATUS.md
 .claude/           — агенты, skills, правила, хуки Claude Code
-Makefile           — публичный API (`make help`): lint, actionlint, contract-fixtures, test, build-all, deb, repro-check, vuln, test-integration, e2e, ci
+Makefile           — публичный API (`make help`): lint, actionlint, contract-fixtures, test, build-all, tarball, deb, repro-check, vuln, test-integration, e2e, e2e-openwrt, ci
 ```
 
 ## Как работать
@@ -53,7 +54,7 @@ Makefile           — публичный API (`make help`): lint, actionlint, c
 
 ## Git и выпуск
 - Ветки `feature/`, `fix/`, `chore/`, `docs/`, `ci/` от свежего `origin/main`; в `main` — PR со squash.
-- Версию и `CHANGELOG.md` ведёт **release-please** (`release-type: go`, тег `vX.Y.Z`); релиз прикладывает оба `.deb` и `SHA256SUMS` и запускает подъём пина в cream-extensions. Теги руками не ставят — skill `/release`, [runbook 01](docs/runbooks/01_release.md).
+- Версию и `CHANGELOG.md` ведёт **release-please** (`release-type: go`, тег `vX.Y.Z`); релиз прикладывает оба `.deb`, оба `stvor-agent_<v>_linux_<arch>.tar.gz` (OpenWrt) и общий `SHA256SUMS` и запускает подъём пина в cream-extensions. Теги руками не ставят — skill `/release`, [runbook 01](docs/runbooks/01_release.md).
 - `git add <пути>`, никогда `git add -A`. Хуки lefthook (`lefthook install`) не обходить: `--no-verify` запрещён.
 
 ## Гигиена и секреты

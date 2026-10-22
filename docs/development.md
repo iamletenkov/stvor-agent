@@ -11,8 +11,11 @@ make test-integration  # адаптер teleport против настоящег
 make e2e               # сквозной тест в debian:12 с systemd: cream, каталог по пину test/e2e/catalog-pin.env, поддельный портал
                        # + телеметрия: токен от run → служба stvor-telemetry → пачка у портала; exposure юнита ≤ test/e2e/telemetry-security.env
                        # (systemd 252; другие версии systemd e2e не покрывает — см. «Бюджет телеметрии на машине»)
-make deb VERSION=4.0.1 # dist/stvor-agent_<версия>_{amd64,arm64}.deb и dist/SHA256SUMS (ARCH=amd64 — один)
-make repro-check       # две сборки .deb с пустыми кешами — равные sha256
+make e2e-openwrt       # корневая ФС OpenWrt 25.12 (openwrt-builder v0.3.1) в docker: установка из tar.gz,
+                       # procd-скрипты через rc.common с поддельным ubus, поддельный cream (teleport-openwrt), телеметрия
+make tarball           # dist/stvor-agent_<версия>_linux_{amd64,arm64}.tar.gz для OpenWrt (бинарь, init.d/, man, лицензии)
+make deb VERSION=4.0.1 # dist/stvor-agent_<версия>_{amd64,arm64}.deb, оба tar.gz и общий dist/SHA256SUMS (ARCH=amd64 — один)
+make repro-check       # две сборки .deb и tar.gz с пустыми кешами — равные sha256
 make vuln              # govulncheck
 make man               # dist/man/stvor-agent.8; смотреть: man -l dist/man/stvor-agent.8
 make ci                # всё, что гоняет CI: lint, test, build-all, deb, repro-check

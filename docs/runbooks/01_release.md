@@ -9,7 +9,7 @@
 `build:` версию не трогают. После проверок на `main` release-please открывает (и дальше обновляет) PR
 «chore(main): release X.Y.Z». Релиз затем:
 
-1. собирает и прикладывает к релизу оба `.deb` и `SHA256SUMS` (job `release-artifacts`);
+1. собирает и прикладывает к релизу оба `.deb`, оба `tar.gz` для OpenWrt и общий `SHA256SUMS` (job `release-artifacts`);
 2. поднимает пин обёртки в cream-extensions (job `dispatch-extensions`) — §3;
 3. поднимает пин на портале Stvor (job `dispatch-stvor`) — §4.
 
@@ -25,21 +25,26 @@ gh pr view <N> -R iamletenkov/stvor-agent --json files   # только CHANGELO
 Номер версии считает release-please по коммитам с прошлого релиза: `fix:` — patch, `feat:` — minor,
 `!`/`BREAKING CHANGE:` — major. Слияние (squash) создаёт тег `vX.Y.Z` и релиз GitHub.
 
-## 2. Файлы релиза (.deb и SHA256SUMS)
+## 2. Файлы релиза (.deb, tar.gz и SHA256SUMS)
 
-Job `release-artifacts` workflow `CI and Release` собирает из тега `make deb VERSION=X.Y.Z`, сверяет
-`stvor-agent version --short` с тегом и прикладывает три файла.
+Job `release-artifacts` workflow `CI and Release` собирает из тега `make deb VERSION=X.Y.Z` (он же собирает
+`tar.gz`), сверяет `stvor-agent version --short` с тегом, проверяет набор `tools/check-release-assets.sh` и
+прикладывает пять файлов. Тот же `make deb` и та же проверка на версии `0.0.0-dev` идут в job `check` каждого
+PR — сухой прогон выпуска.
 
 ```sh
 gh run watch -R iamletenkov/stvor-agent "$(gh run list -R iamletenkov/stvor-agent -b main -L 1 --json databaseId --jq '.[0].databaseId')"
 gh release view vX.Y.Z -R iamletenkov/stvor-agent --json assets --jq '.assets[].name'
-# ожидается: SHA256SUMS, stvor-agent_X.Y.Z_amd64.deb, stvor-agent_X.Y.Z_arm64.deb
+# ожидается: SHA256SUMS, stvor-agent_X.Y.Z_amd64.deb, stvor-agent_X.Y.Z_arm64.deb,
+#   stvor-agent_X.Y.Z_linux_amd64.tar.gz, stvor-agent_X.Y.Z_linux_arm64.tar.gz
 d="$(mktemp -d)" && gh release download vX.Y.Z -R iamletenkov/stvor-agent -D "$d" && (cd "$d" && sha256sum -c SHA256SUMS)
 ```
 
 Сборка упала — не откатывать релиз, а перезапустить: «Re-run failed jobs» в том же прогоне или
 `gh workflow run ci-release.yml -R iamletenkov/stvor-agent --ref main -f tag=vX.Y.Z -f upload=true`
-(без `upload=true` — сухой прогон сборки, файлы не загружаются).
+(без `upload=true` — сухой прогон сборки, файлы не загружаются). Ручная пересборка собирает код тега;
+теги до поддержки OpenWrt (в них нет `tools/tarball.sh`) workflow отвергает сразу после checkout — их ассеты
+(без `tar.gz`) не пересобираются.
 
 ## 3. Пин в cream-extensions
 
