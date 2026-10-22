@@ -73,6 +73,28 @@ sudo apt install "./stvor-agent_${V}_${ARCH}.deb"
 Так не появится метка `stvor_agent` (её drop-in кладёт обёртка), а настройки службы — умолчания
 (`/etc/cream/stvor-agent/config` необязателен). Без cream пакет не ставится (`Depends: cream (>= 1.0.0)`).
 
+## OpenWrt: `tar.gz`
+
+На OpenWrt (25.12 и новее) `.deb` нет — выпуск несёт `stvor-agent_<версия>_linux_{amd64,arm64}.tar.gz`, в тот же
+`SHA256SUMS`. Ставит его расширение `stvor-agent-openwrt` каталога cream-extensions; руками — так:
+
+```sh
+V=4.1.0; ARCH=amd64   # или arm64
+curl -fLO "https://github.com/iamletenkov/stvor-agent/releases/download/v$V/stvor-agent_${V}_linux_${ARCH}.tar.gz"
+curl -fLO "https://github.com/iamletenkov/stvor-agent/releases/download/v$V/SHA256SUMS"
+grep " stvor-agent_${V}_linux_${ARCH}.tar.gz\$" SHA256SUMS | sha256sum -c -
+mkdir -p /tmp/sa && tar -xzf "stvor-agent_${V}_linux_${ARCH}.tar.gz" -C /tmp/sa
+cp /tmp/sa/stvor-agent /usr/bin/ && cp /tmp/sa/init.d/stvor-agent /tmp/sa/init.d/stvor-agent-telemetry /etc/init.d/
+chmod 0755 /usr/bin/stvor-agent /etc/init.d/stvor-agent /etc/init.d/stvor-agent-telemetry
+/etc/init.d/stvor-agent-telemetry enable   # как postinst .deb: без токена служба не стартует
+```
+
+В архиве: статический бинарь `stvor-agent`, procd-скрипты `init.d/stvor-agent` и `init.d/stvor-agent-telemetry`
+(`USE_PROCD=1`, `START=99`, `respawn`, `no_new_privs`), `stvor-agent.8.gz`, `LICENSE`, `NOTICE`. Дальше — как на
+Debian: `stvor-agent enable URL=…` (токен со stdin) включает и запускает `/etc/init.d/stvor-agent`; пользователя
+`stvor-telemetry` скрипты создают сами (`user_add` из `/lib/functions.sh`), если установщик его не завёл. Пути на
+OpenWrt — [справочник настроек](../reference/configuration.md#openwrt); песочницы нет — [SECURITY.md](../../SECURITY.md).
+
 ## Что делает пакет
 
 - `postinst` включает юнит только при первой установке (обновление не отменяет `disable` оператора) и

@@ -1,0 +1,49 @@
+#!/bin/sh
+# Fake /usr/bin/cream of the OpenWrt end-to-end test (make e2e-openwrt): the
+# teleport-openwrt extension the agent applies labels with on OpenWrt, reduced
+# to the three calls of internal/teleport (contract schema 1). Every call is a
+# line in $FAKECREAM_DIR/calls.log; the managed labels live in
+# $FAKECREAM_DIR/managed ("<env> <space>"). The Debian name `teleport` is
+# refused, so a wrong extension name fails the scenario.
+set -eu
+dir=${FAKECREAM_DIR:-/opt/fakecream}
+mkdir -p "$dir"
+echo "$*" >>"$dir/calls.log"
+
+status() { # status <env> <space> [result]
+	if [ -n "$1" ]; then
+		managed="{\"env\":\"$1\",\"space\":\"$2\"}"
+	else
+		managed="{}"
+	fi
+	printf '{"schema":1,"managed":%s,"pending":false,"joined":true,"active":true%s}\n' \
+		"$managed" "${3:+,\"result\":\"$3\"}"
+}
+
+cur_env="" cur_space=""
+if [ -f "$dir/managed" ]; then
+	read -r cur_env cur_space <"$dir/managed"
+fi
+
+case "$*" in
+"run teleport-openwrt managed-status")
+	status "$cur_env" "$cur_space"
+	;;
+"run --lock-timeout 20s teleport-openwrt set-managed env="*" space="*)
+	env=${6#env=}
+	space=${7#space=}
+	if [ "$env $space" = "$cur_env $cur_space" ]; then
+		status "$env" "$space" unchanged
+	else
+		echo "$env $space" >"$dir/managed"
+		status "$env" "$space" applied
+	fi
+	;;
+"actions teleport-openwrt --json")
+	echo '{"ok":true,"result":{"ext":"teleport-openwrt","actions":[{"name":"join"},{"name":"managed-status"},{"name":"set-managed"}]}}'
+	;;
+*)
+	echo "fake cream: неожиданный вызов: $*" >&2
+	exit 64
+	;;
+esac

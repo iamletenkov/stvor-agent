@@ -121,6 +121,17 @@ func TestManPage(t *testing.T) {
 			t.Errorf("no %s", s)
 		}
 	}
+	// Paths by family (spec OpenWrt §4.3): Debian/Ubuntu and OpenWrt both.
+	for _, s := range []string{".SS OpenWrt\n",
+		"/var/lib/stvor\\-agent/state.json", "/opt/stvor\\-agent/state.json",
+		"/var/lib/stvor\\-agent\\-telemetry", "/opt/stvor\\-agent/telemetry",
+		"/opt/stvor\\-agent/machine\\-id", "/etc/init.d/stvor\\-agent\n", "/etc/init.d/stvor\\-agent\\-telemetry\n",
+		"/etc/cream/stvor\\-agent\\-openwrt/config", "\\fBteleport\\-openwrt\\fR", "/run/stvor\\-agent\\-telemetry",
+		"\\fBlogread\\fR(8)"} {
+		if !strings.Contains(page, s) {
+			t.Errorf("no %q", s)
+		}
+	}
 	for i, r := range page {
 		if r > unicode.MaxASCII {
 			t.Fatalf("non-ASCII %q at %d", r, i)

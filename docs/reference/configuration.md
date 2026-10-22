@@ -70,7 +70,25 @@ journalctl -u stvor-agent -n 20     # следующий опрос: event=poll 
 | службы | `systemctl … stvor-agent.service` | `/etc/init.d/stvor-agent enable\|restart\|stop\|disable` (procd) |
 | расширение cream | `teleport` | `teleport-openwrt` |
 
-Токены (`/etc/stvor-agent/token`, `/etc/stvor-agent-telemetry/token`) и `/run/stvor-agent.lock` — те же.
+Токены (`/etc/stvor-agent/token`, `/etc/stvor-agent-telemetry/token`) и `/run/stvor-agent.lock` — те же: `/run`
+на OpenWrt — ссылка на `/var/run` (tmpfs), её делает `/etc/init.d/boot` (`START=10`) на каждой загрузке, до
+служб агента (`START=99`).
+
+procd-скрипты (из `tar.gz` выпуска, `/etc/init.d/`) повторяют юниты:
+
+| | `stvor-agent` | `stvor-agent-telemetry` |
+|---|---|---|
+| старт | только при `/etc/stvor-agent/token` | только при `/etc/stvor-agent-telemetry/token` |
+| пользователь | root, `no_new_privs` | `stvor-telemetry` (создаётся скриптом, если нет), `no_new_privs`, `GOMEMLIMIT=40MiB` |
+| перезапуск | `respawn 3600 10 0` (через 10 с, без предела) | так же |
+| остановка | SIGTERM, через 120 с SIGKILL | через 30 с |
+| каталоги | `/opt/stvor-agent` 0750 `root:stvor-telemetry` | `/opt/stvor-agent/telemetry` 0700, `/run/stvor-agent-telemetry` 0755 — владелец `stvor-telemetry` |
+| журнал | `logread -e stvor-agent` | `logread -e stvor-agent` |
+
+Настройки — `/etc/cream/stvor-agent-openwrt/config` (`cream set stvor-agent-openwrt …`): скрипты берут из него
+только `STVOR_AGENT_INTERVAL` и `STVOR_AGENT_LOG_LEVEL` с простым значением (`[A-Za-z0-9_.:-]`), файл не исполняют.
+`stvor-agent disable` выключает и останавливает агента и останавливает телеметрию; её ссылку `rc.d` (её ставит
+установщик) не трогает — как юнит на Debian.
 
 ## Служба
 

@@ -2,7 +2,7 @@ name: CI and Release
 
 # Проверки — те же make-цели, что запускают руками: make ci (lint с actionlint
 # и сверкой образцов контракта, test, build-all, deb, repro-check), make vuln,
-# make test-integration, make e2e (на main и вручную). Go, nfpm,
+# make test-integration, make e2e (на main и вручную), make e2e-openwrt. Go, nfpm,
 # линтеры — в контейнерах с закреплёнными образами (Makefile), CI и локальный
 # прогон не расходятся.
 #
@@ -10,7 +10,8 @@ name: CI and Release
 # на main после зелёных проверок он ведёт PR «release X.Y.Z» (CHANGELOG.md);
 # слияние этого PR создаёт тег vX.Y.Z и опубликованный релиз. Теги руками не
 # ставят. Версия в бинаре и пакете — из тега (ldflags), CI сверяет.
-# Затем release-artifacts собирает из тега оба .deb и SHA256SUMS и прикладывает
+# Затем release-artifacts собирает из тега оба .deb, оба tar.gz для OpenWrt
+# (stvor-agent_<v>_linux_<arch>.tar.gz) и общий SHA256SUMS и прикладывает
 # их к релизу, а dispatch-extensions (если включён переменной
 # EXTENSIONS_BUMP_ENABLED) запускает в cream-extensions подъём пина агента.
 #
@@ -96,6 +97,8 @@ jobs:
 
       # CI=true (по умолчанию в Actions): без копии cream-extensions сверка
       # образцов контракта — ошибка, а не пропуск.
+      # make ci — ещё и сухой прогон выпуска: те же make deb и
+      # tools/check-release-assets.sh, что в release-artifacts, на 0.0.0-dev.
       - name: make ci
         run: make ci
 
@@ -104,6 +107,7 @@ jobs:
           name: deb
           path: |
             dist/*.deb
+            dist/*.tar.gz
             dist/SHA256SUMS
           retention-days: 7
 
@@ -182,9 +186,34 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # OpenWrt (спека OpenWrt §4.3): корневая ФС openwrt-builder v0.3.1 в docker,
+  # установка из tar.gz выпуска, procd-скрипты через rc.common, телеметрия.
+  # Лёгкий (без systemd) — на каждый PR.
+  e2e-openwrt:
+    name: E2E (OpenWrt root FS)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0   # SOURCE_DATE_EPOCH — время коммита
+          persist-credentials: false
+
+      - name: make e2e-openwrt
+        run: make e2e-openwrt
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: e2e-openwrt-logs
+          path: .scratchpad/test-runs/
+          if-no-files-found: ignore
+          retention-days: 7
+
   release-please:
     name: Release Please
-    needs: [check, vuln, integration]
+    needs: [check, vuln, integration, e2e-openwrt]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -211,7 +240,7 @@ jobs:
   # снять и этот job. Упала сборка — «Re-run failed jobs» или ручной запуск
   # с tag и upload=true, не откат релиза.
   release-artifacts:
-    name: Release assets (.deb, SHA256SUMS)
+    name: Release assets (.deb, tar.gz, SHA256SUMS)
     needs: release-please
     if: >-
       !cancelled() && (
@@ -254,6 +283,13 @@ jobs:
           fetch-depth: 0   # время коммита тега
           persist-credentials: false
 
+      # Теги до поддержки OpenWrt (нет tools/tarball.sh) этим workflow не
+      # пересобираются: их набор ассетов — без tar.gz.
+      - name: Тег с tar.gz для OpenWrt
+        run: |
+          [ -f tools/tarball.sh ] \
+            || { echo "::error::$TAG: в теге нет tools/tarball.sh — ассеты до OpenWrt этим workflow не пересобираются"; exit 1; }
+
       # VERSION — тег без «v», SOURCE_DATE_EPOCH — время коммита тега: те же
       # байты, что у make deb / repro-check локально на этом коммите.
       - name: make deb
@@ -272,15 +308,8 @@ jobs:
           got="$(dist/stvor-agent-linux-amd64 version --short)"
           [ "$got" = "$v" ] \
             || { echo "::error::version --short = '$got', тег $TAG"; exit 1; }
+          tools/check-release-assets.sh "$v" dist
           cd dist
-          for f in "stvor-agent_${v}_amd64.deb" "stvor-agent_${v}_arm64.deb"; do
-            [ -s "$f" ] || { echo "::error::нет $f"; exit 1; }
-            grep -qx "[0-9a-f]\{64\}  $f" SHA256SUMS \
-              || { echo "::error::$f нет в SHA256SUMS"; exit 1; }
-          done
-          [ "$(wc -l < SHA256SUMS)" -eq 2 ] \
-            || { echo "::error::в SHA256SUMS не 2 строки"; exit 1; }
-          sha256sum -c SHA256SUMS
           {
             echo "### Ассеты $TAG"
             echo '```'
@@ -298,7 +327,8 @@ jobs:
         run: |
           v="${TAG#v}"
           gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber \
-            "stvor-agent_${v}_amd64.deb" "stvor-agent_${v}_arm64.deb" SHA256SUMS
+            "stvor-agent_${v}_amd64.deb" "stvor-agent_${v}_arm64.deb" \
+            "stvor-agent_${v}_linux_amd64.tar.gz" "stvor-agent_${v}_linux_arm64.tar.gz" SHA256SUMS
 
   # Релиз поднимает пин агента в cream-extensions: запускает там
   # agent-bump.yml, который берёт SHA256SUMS релиза, ставит версию и суммы

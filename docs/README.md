@@ -29,7 +29,7 @@
 | [architecture.md](architecture.md) | место в системе, один опрос, расписание, пакеты Go |
 | [../SECURITY.md](../SECURITY.md) | модель угроз, токен, окружение дочерних процессов, hardening юнита, как сообщить об уязвимости |
 | [development.md](development.md) | сборка, тесты, как вносить изменения |
-| [runbooks/01_release.md](runbooks/01_release.md) | выпуск версии: релизный PR, `.deb` и `SHA256SUMS`, пин в cream-extensions и на портале |
+| [runbooks/01_release.md](runbooks/01_release.md) | выпуск версии: релизный PR, `.deb`, `tar.gz` и `SHA256SUMS`, пин в cream-extensions и на портале |
 | [test-map.md](test-map.md) | карта переноса проверок bash-агента 3.x в Go-тесты; её сверяет `make lint` |
 | [adr/README.md](adr/README.md) | индекс архитектурных решений |
 | [../CHANGELOG.md](../CHANGELOG.md) | изменения по версиям |

@@ -18,6 +18,12 @@
   pve-robot-1 и stvorhost (amd64, cgroup v2): 0,03–0,10 % ядра, RSS ≤ 19,5 МБ; образец `pve-robot-debian13`
   и `tools/collect-fixture.sh`. Не сделано: живой systemd 237, выпуск 4.1.0.
 
+## В работе — OpenWrt (план cream `docs/plans/2026-10-22-openwrt-robots.md`, задачи 3–4)
+- Task 3 в `main`: `internal/platform`, `internal/initsys` (systemd/procd), пути `/opt/stvor-agent`, свой machine-id.
+- Task 4: ассет `stvor-agent_<v>_linux_{amd64,arm64}.tar.gz` (бинарь, procd-скрипты `init.d/`, man, лицензии) в общем
+  `SHA256SUMS`, `make e2e-openwrt` на корневой ФС openwrt-builder v0.3.1, `SECURITY.md` (OpenWrt без песочницы).
+  Выпуск — вместе с 4.1.0 или следующим минором, по сигналу сессии Stvor.
+
 ## Дальше
 1. Приёмка на живом портале — задача 7 среза Stvor «Переход на cream и stvor-agent» (бывшая Task 22).
 2. `stvorhost` на 3.0.1 и роботы на 3.1.x переходят на 4.x перерегистрацией по runbook портала.
