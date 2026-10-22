@@ -1,7 +1,8 @@
-// Package systemd is the agent's view of systemctl: enable, restart and
-// disable --now of its own unit, start/stop of the telemetry unit, and is-active
-// for `status` (spec §8).
-package systemd
+// Package initsys is the agent's view of the init system: enable, restart and
+// disable --now of its own service, start/stop of the telemetry service, and
+// is-active for `status` (spec §8). Systemd runs systemctl (Debian, Ubuntu),
+// Procd runs the /etc/init.d scripts (OpenWrt); For picks one by the family.
+package initsys
 
 import (
 	"bytes"
@@ -14,7 +15,7 @@ import (
 	"time"
 )
 
-// Defaults of the exec adapter.
+// Defaults of the exec adapters.
 const (
 	DefaultPath = "/usr/bin/systemctl"
 	// DefaultTimeout bounds one systemctl call: a restart waits for the
@@ -28,8 +29,10 @@ const (
 // activating, …).
 var reState = regexp.MustCompile(`^[a-z][a-z-]{0,31}$`)
 
-// Systemctl is what the CLI needs from systemd.
-type Systemctl interface {
+// Manager is what the CLI needs from the init system. unit is the systemd
+// unit name ("stvor-agent.service"); Procd runs the init script of the same
+// name without the suffix.
+type Manager interface {
 	Enable(ctx context.Context, unit string) error
 	Restart(ctx context.Context, unit string) error
 	DisableNow(ctx context.Context, unit string) error
@@ -42,51 +45,51 @@ type Systemctl interface {
 	IsActive(ctx context.Context, unit string) string
 }
 
-// Exec runs systemctl at Path ("" — DefaultPath): argv as a list, no shell,
+// Systemd runs systemctl at Path ("" — DefaultPath): argv as a list, no shell,
 // the environment exactly PATH and LANG (nothing of the agent's own
 // environment reaches the child), stdin /dev/null.
-type Exec struct {
+type Systemd struct {
 	Path    string
 	Timeout time.Duration // zero — DefaultTimeout
 	// Stderr receives the stderr of systemctl; nil discards it.
 	Stderr io.Writer
 }
 
-var _ Systemctl = Exec{}
+var _ Manager = Systemd{}
 
 // Enable runs `systemctl enable <unit>`.
-func (e Exec) Enable(ctx context.Context, unit string) error {
+func (e Systemd) Enable(ctx context.Context, unit string) error {
 	_, err := e.run(ctx, "enable", unit)
 	return err
 }
 
 // Restart runs `systemctl restart <unit>`.
-func (e Exec) Restart(ctx context.Context, unit string) error {
+func (e Systemd) Restart(ctx context.Context, unit string) error {
 	_, err := e.run(ctx, "restart", unit)
 	return err
 }
 
 // DisableNow runs `systemctl disable --now <unit>`.
-func (e Exec) DisableNow(ctx context.Context, unit string) error {
+func (e Systemd) DisableNow(ctx context.Context, unit string) error {
 	_, err := e.run(ctx, "disable", "--now", unit)
 	return err
 }
 
 // Start runs `systemctl start <unit>`.
-func (e Exec) Start(ctx context.Context, unit string) error {
+func (e Systemd) Start(ctx context.Context, unit string) error {
 	_, err := e.run(ctx, "start", unit)
 	return err
 }
 
 // Stop runs `systemctl stop <unit>`.
-func (e Exec) Stop(ctx context.Context, unit string) error {
+func (e Systemd) Stop(ctx context.Context, unit string) error {
 	_, err := e.run(ctx, "stop", unit)
 	return err
 }
 
 // IsActive runs `systemctl is-active <unit>`; its exit code (3 for an
 // inactive unit) is not an error, the printed state is the answer.
-func (e Exec) IsActive(ctx context.Context, unit string) string {
+func (e Systemd) IsActive(ctx context.Context, unit string) string {
 	out, _ := e.run(ctx, "is-active", unit)
 	if s := strings.TrimSpace(out); reState.MatchString(s) {
 		return s
@@ -94,12 +97,21 @@ func (e Exec) IsActive(ctx context.Context, unit string) string {
 	return stateUnknown
 }
 
-func (e Exec) run(ctx context.Context, args ...string) (string, error) {
+func (e Systemd) run(ctx context.Context, args ...string) (string, error) {
 	path := e.Path
 	if path == "" {
 		path = DefaultPath
 	}
-	timeout := e.Timeout
+	out, err := run(ctx, path, e.Timeout, e.Stderr, args...)
+	if err != nil {
+		return out, fmt.Errorf("systemctl %s: %w", strings.Join(args, " "), err)
+	}
+	return out, nil
+}
+
+// run starts path with args under timeout (zero — DefaultTimeout) and returns
+// its stdout; the error wraps a failed start or a non-zero exit.
+func run(ctx context.Context, path string, timeout time.Duration, stderr io.Writer, args ...string) (string, error) {
 	if timeout <= 0 {
 		timeout = DefaultTimeout
 	}
@@ -110,9 +122,7 @@ func (e Exec) run(ctx context.Context, args ...string) (string, error) {
 	cmd.Dir = "/"
 	var out bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = e.Stderr
-	if err := cmd.Run(); err != nil {
-		return out.String(), fmt.Errorf("systemctl %s: %w", strings.Join(args, " "), err)
-	}
-	return out.String(), nil
+	cmd.Stderr = stderr
+	err := cmd.Run()
+	return out.String(), err
 }

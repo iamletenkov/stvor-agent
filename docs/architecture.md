@@ -53,7 +53,8 @@
 | `internal/portal` | клиент `/robot-api/v1/labels`: запрос, строгий разбор тела, классификация ответа |
 | `internal/teleport` | адаптер `cream run teleport …` и разбор его JSON |
 | `internal/token`, `internal/state`, `internal/atomicfile` | файл токена, `state.json`, атомарная запись и чтение без ссылок |
-| `internal/systemd`, `internal/version` | вызовы `systemctl`, версия из сборки |
+| `internal/platform` | семейство машины по `os-release` (Debian/Ubuntu или OpenWrt): пути, имя расширения `teleport` |
+| `internal/initsys`, `internal/version` | init-система: `systemctl` или procd (`/etc/init.d/<служба>`), версия из сборки |
 
-Только стандартная библиотека Go. Внешнее — файлы, `systemctl`, `cream`, портал, часы — подменяется
+Только стандартная библиотека Go. Внешнее — файлы, `systemctl`/procd, `cream`, портал, часы — подменяется
 интерфейсами в тестах.

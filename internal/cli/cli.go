@@ -20,10 +20,10 @@ import (
 
 	"github.com/iamletenkov/stvor-agent/internal/atomicfile"
 	"github.com/iamletenkov/stvor-agent/internal/daemon"
+	"github.com/iamletenkov/stvor-agent/internal/initsys"
+	"github.com/iamletenkov/stvor-agent/internal/platform"
 	"github.com/iamletenkov/stvor-agent/internal/portal"
 	"github.com/iamletenkov/stvor-agent/internal/reconcile"
-	"github.com/iamletenkov/stvor-agent/internal/state"
-	"github.com/iamletenkov/stvor-agent/internal/systemd"
 	"github.com/iamletenkov/stvor-agent/internal/teleport"
 	"github.com/iamletenkov/stvor-agent/internal/token"
 	"github.com/iamletenkov/stvor-agent/internal/version"
@@ -121,12 +121,17 @@ type App struct {
 	TelemetryTokenPath string
 	TelemetryStateDir  string
 	TelemetryRunDir    string
+	// MachineIDPath is the agent's own machine-id (OpenWrt has no
+	// /etc/machine-id): `run` creates it, telemetry hashes it; "" — the
+	// system one.
+	MachineIDPath string
 	// Lock is the agent lock: the service takes it without waiting, the CLI
 	// commands wait up to daemon.CLILockWait.
-	Lock      daemon.FileLock
-	Systemctl systemd.Systemctl
-	Teleport  teleport.Teleport
-	Portal    reconcile.Portal
+	Lock daemon.FileLock
+	// Init is the init system of the machine: systemd or procd (OpenWrt).
+	Init     initsys.Manager
+	Teleport teleport.Teleport
+	Portal   reconcile.Portal
 	// TelemetryPortal asks for the telemetry token; nil — `run` does not
 	// keep one.
 	TelemetryPortal reconcile.TelemetryPortal
@@ -143,24 +148,33 @@ type App struct {
 	IsTerminal func(io.Reader) bool
 }
 
-// New is the App of the real machine. Cream and systemctl write their stderr
-// to stderr (the journal under the service).
+// New is the App of the real machine: its family (os-release) picks the init
+// system, the paths and the teleport extension. Cream and the init system
+// write their stderr to stderr (the journal under the service).
 func New(ver string, stderr io.Writer) *App {
+	return newFor(platform.Detect("/"), ver, stderr)
+}
+
+// newFor is the App of a machine of family f.
+func newFor(f platform.Family, ver string, stderr io.Writer) *App {
+	lay := f.Layout()
 	tp := teleport.NewCream("")
+	tp.Extension = lay.TeleportExtension
 	tp.Stderr = stderr
 	pc := portal.New(portal.Config{Version: ver})
 	return &App{
 		Version:            ver,
 		FS:                 osFS{},
 		TokenPath:          token.DefaultPath,
-		StatePath:          state.DefaultPath,
+		StatePath:          lay.StatePath,
 		TelemetryTokenPath: reconcile.TelemetryTokenPath,
-		TelemetryStateDir:  TelemetryStateDir,
+		TelemetryStateDir:  lay.TelemetryStateDir,
 		TelemetryRunDir:    TelemetryRunDir,
+		MachineIDPath:      lay.MachineIDPath,
 		TelemetryPortal:    pc,
 		LookupGroup:        lookupGroupID,
 		Lock:               daemon.FileLock{Path: daemon.DefaultLockPath},
-		Systemctl:          systemd.Exec{Stderr: stderr},
+		Init:               initsys.For(f, stderr),
 		Teleport:           tp,
 		Portal:             pc,
 		Now:                time.Now,
@@ -343,7 +357,7 @@ func (a *App) ticker(log *slog.Logger) *reconcile.Ticker {
 			Portal:       a.TelemetryPortal,
 			FS:           a.FS,
 			LookupGroup:  a.LookupGroup,
-			Start:        func(ctx context.Context) error { return a.Systemctl.Start(ctx, reconcile.TelemetryUnit) },
+			Start:        func(ctx context.Context) error { return a.Init.Start(ctx, reconcile.TelemetryUnit) },
 			TokenPath:    a.TelemetryTokenPath,
 			RejectedPath: filepath.Join(a.TelemetryStateDir, filepath.Base(reconcile.TelemetryRejectedPath)),
 			SourcePath:   filepath.Join(filepath.Dir(a.StatePath), filepath.Base(reconcile.TelemetrySourcePath)),

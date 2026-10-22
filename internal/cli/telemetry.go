@@ -61,7 +61,7 @@ func (a *App) runTelemetry(stderr io.Writer) int {
 		log.Error("буфер телеметрии не открыт", "event", "start", "err", err)
 		return exitError
 	}
-	mid := machineIDHashUnder("/")
+	mid := a.machineIDMeta()
 	loop := &daemon.TelemetryLoop{
 		Collector: machineCollector{c: collect.New(false)},
 		Inventory: inventory.New(),
@@ -79,7 +79,7 @@ func (a *App) runTelemetry(stderr io.Writer) int {
 		Queue:  buf,
 		Meta: func() telemetry.Meta {
 			caps, failed := loop.Meta()
-			return telemetry.Meta{AgentVersion: version.Short(a.Version), MachineIDHash: mid,
+			return telemetry.Meta{AgentVersion: version.Short(a.Version), MachineIDHash: mid(),
 				BootID: loop.BootID(), Capabilities: caps, FailedUnits: failed}
 		},
 		Log:    log,
@@ -285,7 +285,7 @@ type lastSendDoc struct {
 // token) and the status file of the service.
 func (a *App) collectTelemetry(ctx context.Context) telemetryDoc {
 	f := a.telemetryFiles()
-	doc := telemetryDoc{Service: a.Systemctl.IsActive(ctx, reconcile.TelemetryUnit), Token: "ok"}
+	doc := telemetryDoc{Service: a.Init.IsActive(ctx, reconcile.TelemetryUnit), Token: "ok"}
 	switch _, err := f.Credentials(); {
 	case errors.Is(err, fs.ErrNotExist):
 		doc.Token = "absent"

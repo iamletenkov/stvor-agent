@@ -30,7 +30,8 @@ internal/reconcile/— один тик: сверка ожидаемого с ф�
 internal/daemon/   — цикл службы, джиттер, backoff, сигналы, блокировка, настройки из окружения
 internal/teleport/ — адаптер `cream run teleport …`, разбор JSON; testdata/ — файлы-образцы контракта с CE
 internal/token/, internal/state/, internal/atomicfile/ — файл токена, state.json, атомарная запись и чтение без ссылок
-internal/systemd/  — вызовы systemctl; internal/version/ — версия из ldflags
+internal/platform/ — семейство по os-release (Debian/OpenWrt): пути, имя расширения teleport
+internal/initsys/  — init-система: systemctl или procd; internal/version/ — версия из ldflags
 packaging/         — юнит stvor-agent.service (+ unit_test.go), nfpm.yaml, postinst/prerm/postrm, copyright
 test/integration/  — адаптер против настоящего cream в debian:12 (`make test-integration`)
 test/e2e/          — сквозной тест в debian:12 с systemd: cream, каталог по пину, fakeportal (`make e2e`)

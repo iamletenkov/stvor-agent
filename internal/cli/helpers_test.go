@@ -14,9 +14,9 @@ import (
 
 	"github.com/iamletenkov/stvor-agent/internal/atomicfile"
 	"github.com/iamletenkov/stvor-agent/internal/daemon"
+	"github.com/iamletenkov/stvor-agent/internal/initsys"
 	"github.com/iamletenkov/stvor-agent/internal/portal"
 	"github.com/iamletenkov/stvor-agent/internal/state"
-	"github.com/iamletenkov/stvor-agent/internal/systemd"
 	"github.com/iamletenkov/stvor-agent/internal/teleport"
 	"github.com/iamletenkov/stvor-agent/internal/teleport/teleportfake"
 	"github.com/iamletenkov/stvor-agent/internal/token"
@@ -125,7 +125,7 @@ type env struct {
 	root   string
 	app    *App
 	fs     *rootFS
-	sys    *systemd.Fake
+	sys    *initsys.Fake
 	tp     *teleportfake.Fake
 	portal *fakePortal
 	uid    int
@@ -145,7 +145,7 @@ func newEnv(t *testing.T) *env {
 		t:    t,
 		root: root,
 		fs:   &rootFS{reads: map[string]int{}},
-		sys:  &systemd.Fake{Active: "active"},
+		sys:  &initsys.Fake{Active: "active"},
 		tp: &teleportfake.Fake{Current: teleport.Status{
 			Managed: labelsProd, Joined: true, Active: true,
 		}},
@@ -165,7 +165,7 @@ func newEnv(t *testing.T) *env {
 		TelemetryStateDir:  filepath.Join(root, "var/lib/stvor-agent-telemetry"),
 		TelemetryRunDir:    filepath.Join(root, "run/stvor-agent-telemetry"),
 		Lock:               daemon.FileLock{Path: filepath.Join(root, "run/stvor-agent.lock")},
-		Systemctl:          e.sys,
+		Init:               e.sys,
 		Teleport:           e.tp,
 		Portal:             e.portal,
 		Now:                func() time.Time { return t0 },
