@@ -4,6 +4,15 @@
 release-please из Conventional Commits; 3.0.1 и старше написаны вручную в
 формате [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/).
 
+## [4.1.0](https://github.com/iamletenkov/stvor-agent/compare/v4.0.1...v4.1.0) (2026-10-22)
+
+
+### Добавлено
+
+* **initsys:** агент работает на OpenWrt — procd, пути /opt и расширение teleport-openwrt ([#22](https://github.com/iamletenkov/stvor-agent/issues/22)) ([0e7a1fa](https://github.com/iamletenkov/stvor-agent/commit/0e7a1fa7f2a404e4428bf784cfa0a0f1fde9e7b4))
+* **release:** tar.gz для OpenWrt с procd-скриптами в общем SHA256SUMS и e2e на корневой ФС OpenWrt ([#23](https://github.com/iamletenkov/stvor-agent/issues/23)) ([2237c89](https://github.com/iamletenkov/stvor-agent/commit/2237c898da8fe77f493bdfb76a793f6218a78581))
+* **telemetry:** телеметрия робота — сборщики, инвентарь, буфер и служба по контракту v1 ([#21](https://github.com/iamletenkov/stvor-agent/issues/21)) ([39cb83c](https://github.com/iamletenkov/stvor-agent/commit/39cb83c3c3932c51c5ad4fdfb2fdc85ec3a0bd1d))
+
 ## [4.0.1](https://github.com/iamletenkov/stvor-agent/compare/v4.0.0...v4.0.1) (2026-10-20)
 
 
