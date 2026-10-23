@@ -88,7 +88,7 @@ func (a *App) runEnable(url string, stdin io.Reader, stdout, stderr io.Writer) i
 			return exitError
 		}
 	}
-	_, _ = fmt.Fprintf(stdout, "токен записан в %s, служба %s включена\n", a.TokenPath, Unit)
+	_, _ = fmt.Fprintf(stdout, "токен записан в %s, служба %s включена\n", a.TokenPath, a.Init.DisplayName(Unit))
 	return a.runSync(stdout, stderr)
 }
 

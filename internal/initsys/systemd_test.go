@@ -19,6 +19,9 @@ const fakeName = "systemctl"
 type scenario struct {
 	Exit   int    `json:"exit"`
 	Stdout string `json:"stdout"`
+	// ExitBy overrides Exit for one verb (the first argument): the procd
+	// scripts answer `running` apart from `restart`.
+	ExitBy map[string]int `json:"exit_by,omitempty"`
 }
 
 type record struct {
@@ -59,6 +62,11 @@ func fakeSystemctl() int {
 		return 122
 	}
 	_, _ = os.Stdout.WriteString(sc.Stdout)
+	if len(os.Args) > 1 {
+		if code, ok := sc.ExitBy[os.Args[1]]; ok {
+			return code
+		}
+	}
 	return sc.Exit
 }
 

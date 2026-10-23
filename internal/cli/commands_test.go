@@ -79,6 +79,29 @@ func TestEnableStdin(t *testing.T) {
 	}
 }
 
+// The enable message names the service the way the init system does: on
+// OpenWrt (procd) there is no stvor-agent.service.
+func TestEnableServiceName(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ display, want string }{
+		{"", "служба stvor-agent.service включена"},
+		{"stvor-agent (procd)", "служба stvor-agent (procd) включена"},
+	} {
+		e := newEnv(t)
+		e.sys.Display = tc.display
+		code, stdout, stderr := e.run(testToken+"\n", "enable", "URL="+testURL)
+		if code != 0 {
+			t.Fatalf("exit code = %d (stderr %q)", code, stderr)
+		}
+		if !strings.Contains(stdout, tc.want) {
+			t.Errorf("stdout = %q, want %q", stdout, tc.want)
+		}
+		if tc.display != "" && strings.Contains(stdout, ".service") {
+			t.Errorf("stdout = %q names a systemd unit on procd", stdout)
+		}
+	}
+}
+
 // lineThenBlock is a terminal: one typed line, then nothing — no EOF until
 // Ctrl-D.
 type lineThenBlock struct {

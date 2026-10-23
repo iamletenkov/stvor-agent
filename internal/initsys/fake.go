@@ -13,6 +13,8 @@ type Fake struct {
 	EnableErr, RestartErr, DisableErr, StartErr, StopErr error
 	// Active is what IsActive reports; "" — "inactive".
 	Active string
+	// Display is what DisplayName reports; "" — the unit itself.
+	Display string
 
 	calls []string
 }
@@ -53,6 +55,16 @@ func (f *Fake) IsActive(_ context.Context, unit string) string {
 		return "inactive"
 	}
 	return f.Active
+}
+
+// DisplayName implements Manager.
+func (f *Fake) DisplayName(unit string) string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.Display == "" {
+		return unit
+	}
+	return f.Display
 }
 
 // Calls returns the recorded calls in order.

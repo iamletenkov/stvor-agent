@@ -37,9 +37,21 @@ func (p Procd) Enable(ctx context.Context, unit string) error {
 	return p.run(ctx, unit, "enable")
 }
 
-// Restart runs `<script> restart`.
+// Restart runs `<script> restart`, or `<script> start` when `running` says
+// the service is not running: rc.common restart is stop + start, and the stop
+// of a service procd does not know yet (the first install) prints
+// "Command failed: ubus call service delete … (Not found)". An unknown state
+// keeps the plain restart; every failure of the chosen verb is reported.
 func (p Procd) Restart(ctx context.Context, unit string) error {
+	if p.IsActive(ctx, unit) == "inactive" {
+		return p.run(ctx, unit, "start")
+	}
 	return p.run(ctx, unit, "restart")
+}
+
+// DisplayName implements Manager: "<service> (procd)".
+func (p Procd) DisplayName(unit string) string {
+	return strings.TrimSuffix(unit, ".service") + " (procd)"
 }
 
 // DisableNow runs `<script> stop`, then `<script> disable` even when the stop
