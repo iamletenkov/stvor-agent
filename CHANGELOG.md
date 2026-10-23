@@ -4,6 +4,14 @@
 release-please из Conventional Commits; 3.0.1 и старше написаны вручную в
 формате [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/).
 
+## [4.1.1](https://github.com/iamletenkov/stvor-agent/compare/v4.1.0...v4.1.1) (2026-10-23)
+
+
+### Исправлено
+
+* **initsys:** enable на OpenWrt не печатает ошибку ubus и называет службу по-procd ([#25](https://github.com/iamletenkov/stvor-agent/issues/25)) ([52d5c3f](https://github.com/iamletenkov/stvor-agent/commit/52d5c3f1507ae67eac0d36d63521548472bd0188))
+* **initsys:** systemctl ищется в /usr/sbin:/usr/bin:/sbin:/bin, а не только в /usr/bin ([#27](https://github.com/iamletenkov/stvor-agent/issues/27)) ([161816b](https://github.com/iamletenkov/stvor-agent/commit/161816b7b2b39a97274d9b0286f587878c64260e))
+
 ## [4.1.0](https://github.com/iamletenkov/stvor-agent/compare/v4.0.1...v4.1.0) (2026-10-22)
 
 
