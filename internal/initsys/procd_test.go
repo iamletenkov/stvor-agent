@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/iamletenkov/stvor-agent/internal/initsys"
@@ -53,7 +54,7 @@ func TestProcdCommands(t *testing.T) {
 		{"enable", func(ctx context.Context, p initsys.Procd) error { return p.Enable(ctx, "stvor-agent.service") },
 			"stvor-agent", [][]string{{"enable"}}},
 		{"restart", func(ctx context.Context, p initsys.Procd) error { return p.Restart(ctx, "stvor-agent.service") },
-			"stvor-agent", [][]string{{"restart"}}},
+			"stvor-agent", [][]string{{"running"}, {"restart"}}},
 		{"disable --now", func(ctx context.Context, p initsys.Procd) error { return p.DisableNow(ctx, "stvor-agent.service") },
 			"stvor-agent", [][]string{{"stop"}, {"disable"}}},
 		{"start telemetry", func(ctx context.Context, p initsys.Procd) error {
@@ -106,6 +107,59 @@ func TestProcdFailure(t *testing.T) {
 	missing := initsys.Procd{Dir: t.TempDir()}
 	if err := missing.Restart(t.Context(), "stvor-agent.service"); err == nil {
 		t.Error("missing script: err = nil, want an error")
+	}
+}
+
+// TestProcdRestartNotRunning: the first install has no running service, and
+// rc.common restart = stop + start: the stop of a service procd does not know
+// prints "Command failed: ubus call service delete … (Not found)". So a service
+// that is not running is started, not restarted; a running one, or one whose
+// state is unknown, is restarted.
+func TestProcdRestartNotRunning(t *testing.T) {
+	t.Parallel()
+	p, dir := procdFake(t, scenario{ExitBy: map[string]int{"running": 1}})
+	if err := p.Restart(t.Context(), "stvor-agent.service"); err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	calls := procdCalls(t, dir)
+	want := [][]string{{"running"}, {"start"}}
+	if len(calls) != len(want) {
+		t.Fatalf("calls = %+v, want %q", calls, want)
+	}
+	for i, c := range calls {
+		if !slices.Equal(c.Args, want[i]) {
+			t.Errorf("call %d = %q, want %q", i, c.Args, want[i])
+		}
+	}
+}
+
+// TestProcdRestartStartFails: a failed start of a stopped service is a real
+// error and is reported, not swallowed.
+func TestProcdRestartStartFails(t *testing.T) {
+	t.Parallel()
+	p, _ := procdFake(t, scenario{ExitBy: map[string]int{"running": 1, "start": 1}})
+	err := p.Restart(t.Context(), "stvor-agent.service")
+	if err == nil || !strings.Contains(err.Error(), "start") {
+		t.Fatalf("err = %v, want the failed start", err)
+	}
+}
+
+// TestDisplayName: what the CLI prints as the name of the service.
+func TestDisplayName(t *testing.T) {
+	t.Parallel()
+	if got := (initsys.Procd{}).DisplayName("stvor-agent.service"); got != "stvor-agent (procd)" {
+		t.Errorf("Procd = %q", got)
+	}
+	if got := (initsys.Systemd{}).DisplayName("stvor-agent.service"); got != "stvor-agent.service" {
+		t.Errorf("Systemd = %q", got)
+	}
+	f := &initsys.Fake{}
+	if got := f.DisplayName("stvor-agent.service"); got != "stvor-agent.service" {
+		t.Errorf("Fake = %q", got)
+	}
+	f.Display = "stvor-agent (procd)"
+	if got := f.DisplayName("stvor-agent.service"); got != "stvor-agent (procd)" {
+		t.Errorf("Fake with Display = %q", got)
 	}
 }
 

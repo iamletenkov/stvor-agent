@@ -43,6 +43,9 @@ type Manager interface {
 	// IsActive is the answer of `systemctl is-active` ("active",
 	// "inactive", "failed", …) or "unknown" when there is none.
 	IsActive(ctx context.Context, unit string) string
+	// DisplayName is how messages name the service of unit: the systemd
+	// unit itself, or the init script with "(procd)" on OpenWrt.
+	DisplayName(unit string) string
 }
 
 // Systemd runs systemctl at Path ("" — DefaultPath): argv as a list, no shell,
@@ -56,6 +59,9 @@ type Systemd struct {
 }
 
 var _ Manager = Systemd{}
+
+// DisplayName implements Manager: the unit name as is.
+func (e Systemd) DisplayName(unit string) string { return unit }
 
 // Enable runs `systemctl enable <unit>`.
 func (e Systemd) Enable(ctx context.Context, unit string) error {
