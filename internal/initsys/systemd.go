@@ -13,17 +13,24 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/iamletenkov/stvor-agent/internal/syspath"
 )
 
 // Defaults of the exec adapters.
 const (
-	DefaultPath = "/usr/bin/systemctl"
+	// Tool is the name of systemctl looked up in syspath.Dirs: /usr/bin on
+	// merged-/usr systems, /bin on images without usrmerge.
+	Tool = "systemctl"
 	// DefaultTimeout bounds one systemctl call: a restart waits for the
 	// running tick of the service (TimeoutStopSec=120) plus the start.
 	DefaultTimeout = 150 * time.Second
 	// stateUnknown is what IsActive reports when systemctl gave no answer.
 	stateUnknown = "unknown"
 )
+
+// findTool resolves Tool when Systemd.Path is empty; a variable for tests.
+var findTool = syspath.Find
 
 // reState is the shape of an `is-active` answer (active, inactive, failed,
 // activating, …).
@@ -48,7 +55,8 @@ type Manager interface {
 	DisplayName(unit string) string
 }
 
-// Systemd runs systemctl at Path ("" — DefaultPath): argv as a list, no shell,
+// Systemd runs systemctl at Path ("" — Tool found in syspath.Dirs, never via
+// the caller's PATH): argv as a list, no shell,
 // the environment exactly PATH and LANG (nothing of the agent's own
 // environment reaches the child), stdin /dev/null.
 type Systemd struct {
@@ -105,10 +113,16 @@ func (e Systemd) IsActive(ctx context.Context, unit string) string {
 
 func (e Systemd) run(ctx context.Context, args ...string) (string, error) {
 	path := e.Path
+	var (
+		out string
+		err error
+	)
 	if path == "" {
-		path = DefaultPath
+		path, err = findTool(Tool)
 	}
-	out, err := run(ctx, path, e.Timeout, e.Stderr, args...)
+	if err == nil {
+		out, err = run(ctx, path, e.Timeout, e.Stderr, args...)
+	}
 	if err != nil {
 		return out, fmt.Errorf("systemctl %s: %w", strings.Join(args, " "), err)
 	}
@@ -124,7 +138,7 @@ func run(ctx context.Context, path string, timeout time.Duration, stderr io.Writ
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, path, args...)
-	cmd.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LANG=C.UTF-8"}
+	cmd.Env = []string{"PATH=" + syspath.Dirs, "LANG=C.UTF-8"}
 	cmd.Dir = "/"
 	var out bytes.Buffer
 	cmd.Stdout = &out
