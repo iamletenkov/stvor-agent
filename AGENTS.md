@@ -31,7 +31,7 @@ internal/daemon/   — цикл службы, джиттер, backoff, сигн�
 internal/teleport/ — адаптер `cream run teleport …`, разбор JSON; testdata/ — файлы-образцы контракта с CE
 internal/token/, internal/state/, internal/atomicfile/ — файл токена, state.json, атомарная запись и чтение без ссылок
 internal/platform/ — семейство по os-release (Debian/OpenWrt): пути, имя расширения teleport
-internal/initsys/  — init-система: systemctl или procd; internal/version/ — версия из ldflags
+internal/initsys/  — init-система: systemctl или procd; internal/syspath/ — поиск системных утилит в /usr/sbin:/usr/bin:/sbin:/bin без PATH окружения; internal/version/ — версия из ldflags
 packaging/         — юниты systemd (+ unit_test.go), nfpm.yaml, postinst/prerm/postrm, copyright; openwrt/ — procd-скрипты для tar.gz (+ procd_test.go)
 test/integration/  — адаптер против настоящего cream в debian:12 (`make test-integration`)
 test/e2e/          — сквозной тест в debian:12 с systemd: cream, каталог по пину, fakeportal (`make e2e`)

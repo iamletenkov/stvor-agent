@@ -9,11 +9,14 @@ import (
 	"regexp"
 	"syscall"
 	"time"
+
+	"github.com/iamletenkov/stvor-agent/internal/syspath"
 )
 
 // Defaults of the systemctl adapter.
 const (
-	DefaultSystemctl        = "/usr/bin/systemctl"
+	// SystemctlTool is the name of systemctl looked up in syspath.Dirs.
+	SystemctlTool           = "systemctl"
 	DefaultSystemctlTimeout = 5 * time.Second
 	// maxFailedUnits bounds the list kept for the portal snapshot; the
 	// metric still counts every failed unit. Both limits are the portal
@@ -183,10 +186,14 @@ func clockFromTimex(state int, status int32, offset int64) ClockState {
 	return st
 }
 
+// findSystemctl resolves SystemctlTool when Systemctl.Path is empty; a
+// variable for tests.
+var findSystemctl = syspath.Find
+
 // Systemctl lists failed units with `systemctl list-units --state=failed`:
 // argv as a list, no shell, a minimal environment, bounded by Timeout.
 type Systemctl struct {
-	Path    string        // "" — DefaultSystemctl
+	Path    string        // "" — SystemctlTool found in syspath.Dirs
 	Timeout time.Duration // zero — DefaultSystemctlTimeout
 }
 
@@ -194,7 +201,11 @@ type Systemctl struct {
 func (sc Systemctl) FailedUnits(ctx context.Context) ([]string, error) {
 	path := sc.Path
 	if path == "" {
-		path = DefaultSystemctl
+		p, err := findSystemctl(SystemctlTool)
+		if err != nil {
+			return nil, ErrAbsent
+		}
+		path = p
 	}
 	timeout := sc.Timeout
 	if timeout <= 0 {
@@ -203,7 +214,7 @@ func (sc Systemctl) FailedUnits(ctx context.Context) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, path, "list-units", "--state=failed", "--plain", "--no-legend", "--no-pager")
-	cmd.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LANG=C", "SYSTEMD_COLORS=0"}
+	cmd.Env = []string{"PATH=" + syspath.Dirs, "LANG=C", "SYSTEMD_COLORS=0"}
 	cmd.WaitDelay = time.Second
 	out, err := cmd.Output()
 	if errors.Is(err, exec.ErrNotFound) || errors.Is(err, syscall.ENOENT) {
